@@ -263,24 +263,67 @@ async def explain_run(run_id: uuid.UUID, runs: RunRepoDep) -> ExplanationRespons
 
 
 # ── forecast + glossary ───────────────────────────────────────────────────
-@router.get("/forecast/{symbol}", response_model=ForecastResponse)
+@router.get("/forecast/{symbol}")
 async def get_forecast(
     symbol: str,
     ohlcv: OHLCVRepoDep,
     model: str = "lightgbm",
     horizon: Annotated[int, Query(ge=1, le=60)] = 5,
     target_type: str = "vol_ratio",
-) -> ForecastResponse:
-    """Latest forecast, always paired with the model's measured skill.
+) -> dict[str, Any]:
+    """Forecast for **any** listed symbol, however new.
 
-    ``is_informative`` is false when the model historically lost to the naive
-    baseline. The API refuses to present such a forecast as useful, because the
-    honest reading of a negative skill score is "this number tells you nothing".
+    The method is chosen from the history available, and always reported:
+
+    * ``walk_forward`` / ``adaptive`` -- enough history to validate on the stock
+      itself. Skill is measured on its own out-of-sample folds.
+    * ``transfer`` -- a recent listing. A pooled model trained on other
+      companies is applied; the stock's own history is used only to compute the
+      latest feature row. Expected accuracy comes from leave-one-symbol-out
+      validation on stocks the model had never seen.
+
+    ``confidence`` reflects the strength of the *evidence*, not how good the
+    headline number looks.
     """
+    from forecaster.validation.coldstart import (
+        Method,
+        choose_method,
+        confidence_for,
+        forecast_cold_start,
+    )
     from forecaster.validation.harness import EvaluationConfig, EvaluationHarness
 
-    frame, _ = await load_bars(symbol, ohlcv)
+    frame, tier = await load_bars(symbol, ohlcv)
+    method = choose_method(len(frame))
 
+    # ── recent listing: pooled cross-sectional model ──────────────────────
+    if method is Method.TRANSFER:
+        cold = await forecast_cold_start(symbol.upper(), frame, horizon=horizon)
+        payload = cold.as_dict()
+        payload.update(
+            {
+                "model": "pooled_lightgbm",
+                "target_type": target_type,
+                "source_tier": tier,
+                "is_informative": bool(
+                    cold.expected_skill_pct and cold.expected_skill_pct > 0
+                ),
+                "narrative": describe_forecast(
+                    symbol=symbol.upper(),
+                    model_name="a pooled model",
+                    prediction=cold.prediction or 0.0,
+                    lower=cold.lower,
+                    upper=cold.upper,
+                    horizon=horizon,
+                    skill_pct=cold.expected_skill_pct,
+                    dm_pvalue=None,
+                    target_type=target_type,
+                ),
+            }
+        )
+        return payload
+
+    # ── enough history to validate on the stock itself ────────────────────
     config = EvaluationConfig(
         symbol=symbol.upper(),
         models=[model],
@@ -303,30 +346,31 @@ async def get_forecast(
     skill_pct = result.skill.get("rmse", {}).get("improvement_pct")
     dm_p = result.dm_test.get("dm_pvalue")
 
-    return ForecastResponse(
-        symbol=symbol.upper(),
-        model=model,
-        horizon=horizon,
-        target_type=target_type,
-        as_of_date=last_fold.dates[-1].date(),
-        prediction=prediction,
-        lower=lower,
-        upper=upper,
-        skill_pct=skill_pct,
-        dm_pvalue=dm_p,
-        narrative=describe_forecast(
-            symbol=symbol.upper(),
-            model_name=model,
-            prediction=prediction,
-            lower=lower,
-            upper=upper,
-            horizon=horizon,
-            skill_pct=skill_pct,
-            dm_pvalue=dm_p,
-            target_type=target_type,
+    return {
+        "symbol": symbol.upper(),
+        "model": model,
+        "method": method.value,
+        "confidence": confidence_for(method, len(frame), skill_pct).value,
+        "horizon": horizon,
+        "target_type": target_type,
+        "as_of": last_fold.dates[-1].date().isoformat(),
+        "prediction": prediction,
+        "lower": lower,
+        "upper": upper,
+        "n_bars": len(frame),
+        "expected_skill_pct": skill_pct,
+        "dm_pvalue": dm_p,
+        "source_tier": tier,
+        "basis": f"Walk-forward on {symbol.upper()}'s own history "
+                 f"({report.n_folds} folds, {report.n_samples:,} samples)",
+        "caveats": [],
+        "narrative": describe_forecast(
+            symbol=symbol.upper(), model_name=model, prediction=prediction,
+            lower=lower, upper=upper, horizon=horizon,
+            skill_pct=skill_pct, dm_pvalue=dm_p, target_type=target_type,
         ),
-        is_informative=bool(skill_pct is not None and skill_pct > 0),
-    )
+        "is_informative": bool(skill_pct is not None and skill_pct > 0),
+    }
 
 
 @router.get("/glossary", response_model=list[GlossaryEntry])

@@ -137,6 +137,16 @@ class OnDemandIngestor:
                 log.info("on_demand_no_data", symbol=symbol, seconds=round(elapsed, 2))
                 return IngestOutcome(symbol, False, reason="no data from any provider")
 
+            # A symbol ingested just now must be searchable immediately; the
+            # index otherwise carries a 15-minute TTL and a brand-new listing
+            # would stay invisible to search right after someone fetched it.
+            try:
+                from forecaster.search.service import ensure_index
+
+                await ensure_index(force=True)
+            except Exception as exc:  # noqa: BLE001 -- indexing is not critical
+                log.debug("index_refresh_failed", symbol=symbol, error=str(exc))
+
             log.info(
                 "on_demand_ingested", symbol=symbol, rows=rows, seconds=round(elapsed, 2)
             )

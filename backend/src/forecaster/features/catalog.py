@@ -400,6 +400,21 @@ def _names(*groups: str, include_optional: bool = False) -> list[str]:
     return [s.name for s in list_features(include_optional=include_optional) if s.group in groups]
 
 
+#: Features whose warm-up fits inside a few weeks of trading. Used for recent
+#: listings, where the `core` set's 200-day average alone cannot exist yet.
+COLD_START_FEATURES = [
+    "log_return_1", "log_return_2", "log_return_3", "log_return_5",
+    "log_return_10", "log_return_20",
+    "gap_open", "intraday_range", "close_location",
+    "momentum_5", "momentum_10", "momentum_20",
+    "realized_vol_5", "realized_vol_10",
+    "price_to_sma_10", "price_to_sma_20",
+    "rsi_7",
+    "drawdown_252",
+    "calendar",
+]
+
+
 def feature_set(name: str) -> list[str]:
     """Resolve a named feature set to a concrete list.
 
@@ -413,10 +428,14 @@ def feature_set(name: str) -> list[str]:
 
     if name == "minimal":
         return ["log_return_1", "log_return_5", "rsi_14", "realized_vol_20"]
+    if name == "cold_start":
+        return list(COLD_START_FEATURES)
     if name == "core":
         return _names("returns", "momentum", "trend", "volatility", "volume")
     if name == "full":
         return [s.name for s in list_features(include_optional=False)]
     if name == "all":
         return [s.name for s in list_features(include_optional=True)]
-    raise ValueError(f"Unknown feature set {name!r}; try minimal|core|full|all")
+    raise ValueError(
+        f"Unknown feature set {name!r}; try cold_start|minimal|core|full|all"
+    )

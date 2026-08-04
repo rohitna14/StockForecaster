@@ -47,7 +47,9 @@ ALIASES: dict[str, list[str]] = {
     "twitch": ["AMZN"],
     "nvidia": ["NVDA"],
     "tesla": ["TSLA"],
-    "spacex": ["TSLA"],  # not public; Tesla is the closest tradable proxy
+    "spacex": ["SPCX"],
+    "starlink": ["SPCX"],
+    "space exploration": ["SPCX"],
     "netflix": ["NFLX"],
     "disney": ["DIS"],
     "marvel": ["DIS"],
