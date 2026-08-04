@@ -18,7 +18,7 @@ prototype did:
 from __future__ import annotations
 
 import time
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from typing import Any
 
 import numpy as np
@@ -38,6 +38,17 @@ from forecaster.validation.stats import block_bootstrap_ci, diebold_mariano
 
 log = get_logger(__name__)
 
+#: Fewest walk-forward folds worth reporting. Below this the fold-to-fold
+#: variance is unknowable and a confidence interval would be theatre.
+MIN_FOLDS = 3
+
+#: Smallest test window, in bars (~1 month).
+MIN_TEST = 21
+
+#: Smallest training window we will fit on, in bars (~6 months). Below this a
+#: model has not seen a full earnings cycle and is not a forecast.
+ABSOLUTE_MIN_TRAIN = 126
+
 
 # ═══════════════════════════════ configuration ═════════════════════════════
 @dataclass
@@ -55,11 +66,16 @@ class EvaluationConfig:
     embargo: int = 2
     mode: SplitMode = SplitMode.ROLLING
     max_folds: int | None = None
+    min_train_size: int = 252
 
     # Evaluation options
     cost_bps: float = 5.0  # round-trip cost assumption for strategy metrics
     conformal_alpha: float = 0.2  # 0.2 -> 80% prediction interval (P10-P90)
     random_seed: int = 42
+
+    #: Shrink the walk-forward windows when a symbol lacks the history the
+    #: defaults assume. Off means "fail rather than adapt".
+    adapt_to_history: bool = True
 
     def splitter(self) -> WalkForwardSplit:
         return WalkForwardSplit(
@@ -70,6 +86,61 @@ class EvaluationConfig:
             embargo=self.embargo,
             mode=self.mode,
             max_folds=self.max_folds,
+            min_train_size=self.min_train_size,
+        )
+
+    def fitted_to(self, n_samples: int) -> EvaluationConfig:
+        """Return a config whose windows fit ``n_samples`` usable rows.
+
+        The defaults assume ~5 years of history. A 2024 IPO has ~1.5, so the
+        requested 504-bar training window plus a 63-bar test window simply does
+        not fit and the splitter correctly produces zero folds -- which surfaced
+        to users as a hard failure on perfectly valid companies (RDDT, ARM).
+
+        Failing there is the wrong call. Less history means wider error bars,
+        not "no answer possible", so the windows are scaled to fit while keeping
+        at least :data:`MIN_FOLDS` folds and a training window big enough to
+        mean something. Below :data:`ABSOLUTE_MIN_TRAIN` we do stop, because a
+        model fitted on a few weeks of data is not a forecast.
+
+        The adaptation is recorded in ``split_config`` on the run, so a metric
+        computed on shortened windows is never silently compared against one
+        computed on full windows.
+        """
+        gap = self.horizon + self.embargo
+        required = self.train_size + gap + self.test_size
+
+        if not self.adapt_to_history or n_samples >= required + self.test_size:
+            return self
+
+        # Aim for MIN_FOLDS folds: train + gap + folds*test <= n
+        for folds in (MIN_FOLDS, 2):
+            test_size = max(MIN_TEST, (n_samples - ABSOLUTE_MIN_TRAIN - gap) // (folds + 2))
+            train_size = n_samples - gap - folds * test_size
+            if test_size >= MIN_TEST and train_size >= ABSOLUTE_MIN_TRAIN:
+                log.info(
+                    "split_adapted_to_history",
+                    symbol=self.symbol,
+                    n_samples=n_samples,
+                    train_size=train_size,
+                    test_size=test_size,
+                    target_folds=folds,
+                )
+                return replace(
+                    self,
+                    train_size=int(train_size),
+                    test_size=int(test_size),
+                    min_train_size=ABSOLUTE_MIN_TRAIN,
+                )
+
+        raise InsufficientDataError(
+            f"{self.symbol} has only {n_samples} usable bars after feature "
+            f"warm-up. Walk-forward validation needs at least "
+            f"{ABSOLUTE_MIN_TRAIN + gap + MIN_TEST * 2} to produce more than one "
+            f"fold, which is roughly 18 months of trading history. This symbol "
+            f"is likely a recent listing.",
+            symbol=self.symbol,
+            usable_bars=n_samples,
         )
 
     def as_dict(self) -> dict[str, Any]:
@@ -191,6 +262,35 @@ class EvaluationHarness:
     def __init__(self, config: EvaluationConfig) -> None:
         self.config = config
 
+    def _choose_feature_set(self, n_bars: int) -> str:
+        """Pick a feature set whose warm-up fits the available history.
+
+        The `core` set needs ~201 bars before its first valid row (a 200-day
+        moving average cannot exist sooner). For a symbol with 18 months of
+        history that warm-up alone consumes most of the data, leaving nothing to
+        validate on. Falling back to a shorter-warm-up set trades a few features
+        for the ability to answer at all.
+        """
+        from forecaster.features.registry import required_history
+
+        requested = self.config.feature_set
+        for candidate in (requested, "minimal"):
+            names = F.feature_set(candidate)
+            warmup = required_history(names)
+            # Leave room for a training window and a couple of test folds.
+            if n_bars - warmup >= ABSOLUTE_MIN_TRAIN + MIN_TEST * 2:
+                if candidate != requested:
+                    log.info(
+                        "feature_set_downgraded",
+                        symbol=self.config.symbol,
+                        requested=requested,
+                        using=candidate,
+                        bars=n_bars,
+                        warmup=warmup,
+                    )
+                return candidate
+        return "minimal"
+
     def prepare(self, ohlcv: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series, pd.Series]:
         """Build the aligned (features, target, close) triple.
 
@@ -198,7 +298,7 @@ class EvaluationHarness:
         and valid target rows. Every downstream index is positional into these
         three objects, which removes an entire class of off-by-one bugs.
         """
-        names = F.feature_set(self.config.feature_set)
+        names = F.feature_set(self._choose_feature_set(len(ohlcv)))
         X = F.build(ohlcv, names)
         y = build_target(ohlcv, self.config.target_type, self.config.horizon)
 
@@ -221,6 +321,11 @@ class EvaluationHarness:
         np.random.seed(cfg.random_seed)
 
         features, target, close = self.prepare(ohlcv)
+
+        # Scale the walk-forward windows to the history this symbol actually
+        # has, rather than failing on anything younger than the defaults assume.
+        cfg = cfg.fitted_to(len(features))
+        self.config = cfg
         splitter = cfg.splitter()
         folds = splitter.split(features)
 
