@@ -92,16 +92,46 @@ def smape(y_true: np.ndarray, y_pred: np.ndarray) -> float:
 
 # ═══════════════════════════════ directional ═══════════════════════════════
 def directional_accuracy(y_true: np.ndarray, y_pred: np.ndarray) -> float:
-    """Fraction of bars where the predicted sign matched the realised sign.
+    """Fraction of *directional calls* that were correct.
 
-    Bars with a realised return of exactly zero are excluded -- there is no
-    direction to get right, and including them inflates the score.
+    Two exclusions, both necessary:
+
+    * Bars where the realised return is exactly zero -- there is no direction
+      to get right, and counting them inflates the score.
+    * Bars where the **prediction** is exactly zero -- the model declined to
+      call a direction. This matters: the naive baseline predicts 0 everywhere,
+      and scoring ``sign(0) != sign(y)`` would report its hit rate as 0.0%,
+      which reads as "always wrong" when the truth is "never bet".
+
+    Returns NaN when the model makes no directional calls at all. Pair this
+    with :func:`directional_coverage` -- a 60% hit rate on 5% of bars is a very
+    different claim from 60% on all of them.
     """
     t, p = _clean_pair(y_true, y_pred)
-    mask = t != 0
+    mask = (t != 0) & (p != 0)
     if not mask.any():
         return float("nan")
     return float(np.mean(np.sign(t[mask]) == np.sign(p[mask])))
+
+
+def directional_coverage(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+    """Fraction of bars on which the model actually made a directional call."""
+    t, p = _clean_pair(y_true, y_pred)
+    if len(t) == 0:
+        return float("nan")
+    return float(np.mean((t != 0) & (p != 0)))
+
+
+def base_rate(y_true: np.ndarray) -> float:
+    """Fraction of bars that were up moves.
+
+    The honest bar for a directional model: equities drift upward, so
+    always-long scores well above 50%. Beating a coin flip is not an
+    achievement; beating this is.
+    """
+    t = np.asarray(y_true, dtype="float64").ravel()
+    t = t[np.isfinite(t) & (t != 0)]
+    return float(np.mean(t > 0)) if len(t) else float("nan")
 
 
 def confusion(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, int]:
@@ -292,6 +322,8 @@ class MetricSet:
     smape: float = float("nan")
     r2: float = float("nan")
     directional_accuracy: float = float("nan")
+    directional_coverage: float = float("nan")
+    base_rate: float = float("nan")
     precision: float = float("nan")
     recall: float = float("nan")
     f1: float = float("nan")
@@ -332,6 +364,8 @@ def compute_all(
         smape=smape(t, p),
         r2=r2(t, p),
         directional_accuracy=directional_accuracy(t, p),
+        directional_coverage=directional_coverage(t, p),
+        base_rate=base_rate(t),
         precision=pr["precision"],
         recall=pr["recall"],
         f1=pr["f1"],

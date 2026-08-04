@@ -28,13 +28,23 @@ class ModelContext:
     keeps price out of the feature matrix, where it would let every other model
     memorise ticker-specific levels.
 
-    ``close`` is aligned to the rows being fitted/predicted. ``history`` is the
-    full series up to and including that window, for lookbacks that reach
-    further back than the window itself (e.g. seasonal naive).
+    Fields:
+        close: close prices aligned to the rows being fitted or predicted.
+        history: full close series up to the start of this window, for
+            lookbacks reaching further back than the window itself.
+        realized: **backtest only.** Target values for the prediction window,
+            used exclusively by rolling-refit models (ARIMA/SARIMA) to update
+            their filter with bars that have *already happened* as the walk
+            proceeds. At prediction step ``i`` a model may consume
+            ``realized[:i]`` and never ``realized[i]``; that invariant is
+            enforced by ``tests/unit/test_models.py::test_rolling_refit_is_causal``.
+            ``None`` in live inference, where nothing has realised yet.
+        horizon: forecast horizon in bars.
     """
 
     close: pd.Series | None = None
     history: pd.Series | None = None
+    realized: np.ndarray | None = None
     horizon: int = 1
 
 

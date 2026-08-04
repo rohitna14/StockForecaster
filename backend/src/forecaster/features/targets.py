@@ -32,6 +32,7 @@ class TargetType(StrEnum):
     DIRECTION = "direction"
     VOL_SCALED_RETURN = "vol_scaled_return"
     TRIPLE_BARRIER = "triple_barrier"
+    VOL_RATIO = "vol_ratio"
 
 
 def forward_return(close: pd.Series, horizon: int = 1) -> pd.Series:
@@ -89,6 +90,39 @@ def forward_vol_scaled_return(
     daily_vol = close.pct_change().rolling(vol_window, min_periods=vol_window).std(ddof=1)
     scale = (daily_vol * np.sqrt(horizon)).replace(0.0, np.nan)
     return (fwd / scale).rename(f"fwd_vol_scaled_{horizon}")
+
+
+def forward_vol_ratio(close: pd.Series, horizon: int = 5) -> pd.Series:
+    """Log ratio of *future* realised volatility to *trailing* realised volatility.
+
+    ``log( RV[t+1 .. t+h] / RV[t-h+1 .. t] )``
+
+    Why this target is framed as a ratio rather than a level: it makes the
+    project's reference baseline the correct one for free. A prediction of
+    ``0`` means "volatility stays where it is" -- which is precisely the random
+    walk in volatility, the standard naive forecast in the volatility
+    literature. So ``naive_last_price`` (which predicts 0) becomes a genuine,
+    well-posed baseline and the skill score answers a real question: *did the
+    model beat assuming volatility persists?*
+
+    Unlike direction, this is a target where a real edge is expected. Volatility
+    clustering -- calm follows calm, turbulence follows turbulence -- is among
+    the most robust empirical regularities in asset returns, and is the entire
+    basis of the ARCH/GARCH literature. Volatility is also mean-reverting, so
+    both persistence and reversion carry information a model can use.
+    """
+    if horizon < 1:
+        raise ValueError("horizon must be >= 1")
+
+    returns = np.log(close / close.shift(1))
+    trailing = returns.rolling(horizon, min_periods=horizon).std(ddof=1)
+    # Shift(-horizon) turns the trailing window into the forward window.
+    forward = trailing.shift(-horizon)
+
+    ratio = np.log(
+        forward.replace(0.0, np.nan) / trailing.replace(0.0, np.nan)
+    )
+    return ratio.rename(f"fwd_vol_ratio_{horizon}")
 
 
 def triple_barrier(
@@ -174,6 +208,8 @@ def build_target(
         return forward_vol_scaled_return(
             close, horizon, vol_window=int(kwargs.get("vol_window", 20))
         )
+    if target_type is TargetType.VOL_RATIO:
+        return forward_vol_ratio(close, horizon)
     if target_type is TargetType.TRIPLE_BARRIER:
         return triple_barrier(
             close,

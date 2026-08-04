@@ -41,6 +41,7 @@ import numpy as np
 
 from forecaster.validation.metrics import (
     _clean_pair,
+    base_rate,
     directional_accuracy,
     mae,
     mse,
@@ -163,25 +164,36 @@ def directional_skill(
     y_true: np.ndarray,
     y_pred_model: np.ndarray,
     y_pred_baseline: np.ndarray | None = None,
-    baseline_name: str = "coin_flip",
+    baseline_name: str = "base_rate",
 ) -> SkillResult:
     """Relative improvement in directional hit rate.
 
-    When ``y_pred_baseline`` is None the comparison is against a 50% coin flip,
-    which makes the arithmetic transparent: 57.5% vs 50% is +15.0%.
+    The comparison target is the **base rate** -- the fraction of bars that were
+    up moves -- not a 50% coin flip. Equities drift upward, so always-long
+    typically scores 52-54%; measuring against 50% would credit a model for
+    market drift it did not predict. That distinction is the difference between
+    an honest number and a flattering one.
 
-    Note this measures *relative* improvement, not percentage points. Quoting it
-    without saying so would be misleading, so :meth:`SkillResult.summary`
-    always prints both scores.
+    ``y_pred_baseline`` is only used when it actually makes directional calls.
+    The reference baseline predicts zero everywhere, so it makes none, and the
+    base rate is used instead.
+
+    Note this measures *relative* improvement, not percentage points: 57.5% vs
+    50.0% is +15.0% relative but only +7.5 points. :meth:`SkillResult.summary`
+    always prints both raw scores so the distinction cannot be lost.
     """
     t, m = _clean_pair(y_true, y_pred_model)
     model_acc = directional_accuracy(t, m)
 
-    if y_pred_baseline is None:
-        baseline_acc = 0.5
-    else:
+    baseline_acc = float("nan")
+    if y_pred_baseline is not None:
         _, b = _clean_pair(y_true, y_pred_baseline)
-        baseline_acc = directional_accuracy(t[: len(b)], b)
+        n = min(len(t), len(b))
+        baseline_acc = directional_accuracy(t[:n], b[:n])
+
+    if not np.isfinite(baseline_acc):
+        baseline_acc = base_rate(t)
+        baseline_name = "base_rate"
 
     if not np.isfinite(baseline_acc) or baseline_acc < _EPS:
         return SkillResult("directional_accuracy", model_acc, baseline_acc,
