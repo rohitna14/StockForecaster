@@ -45,7 +45,7 @@ survives the result that backed it.
 - Shipped a **Next.js/TypeScript dashboard** (TradingView charts, plain-English
   explain mode, ⌘K search) and a **Streamlit client on Hugging Face Spaces** —
   architecturally enforced to share one API — with Docker, GitHub Actions CI and
-  **135 tests** including 6 architectural constraint tests.
+  **145 tests** including 6 architectural constraint tests.
 
 ---
 
@@ -58,7 +58,7 @@ survives the result that backed it.
   consistent with market efficiency.
 - Engineered a **two-tier store** (Postgres + DuckDB/Parquet) holding 7,000+
   tickers in ~120 MB, served by async **FastAPI** with provider failover and
-  circuit breakers; **135 tests** including an automated lookahead-bias suite.
+  circuit breakers; **145 tests** including an automated lookahead-bias suite.
 - Shipped **Next.js** and **Streamlit** clients over one API, with conformal
   prediction intervals measured at **0.810 coverage vs 0.800 nominal**.
 

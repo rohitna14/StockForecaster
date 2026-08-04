@@ -148,7 +148,7 @@ services. With Docker, `docker compose up` brings up the production topology
 | **Backtest** | event-driven, next-bar fills, costs on turnover, vol-targeted sizing, buy-and-hold benchmark, cost-sensitivity sweep |
 | **Explain** | SHAP (tree / closed-form linear / permutation fallback) + a plain-English glossary for every displayed metric |
 
-**135 tests**, including 42 per-feature causality checks, the shuffled-target
+**145 tests**, including 42 per-feature causality checks, the shuffled-target
 guard, next-bar-execution verification, and 6 architectural constraints.
 
 ---
