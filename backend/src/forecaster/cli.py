@@ -283,5 +283,10 @@ def lake_summary(
         console.print(f"[dim]... and {len(frame) - limit} more[/]")
 
 
+from forecaster import cli_evaluate  # noqa: E402 -- avoids a circular import at module load
+
+cli_evaluate.register(app)
+
+
 if __name__ == "__main__":
     app()
