@@ -1,0 +1,71 @@
+# ─── Python ───────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+.venv/
+venv/
+env/
+.python-version
+
+# ─── Testing / coverage ───────────────────────────────────
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.hypothesis/
+.mypy_cache/
+.ruff_cache/
+
+# ─── ML training artifacts ────────────────────────────────
+catboost_info/
+mlruns/
+lightning_logs/
+*.h5
+*.keras
+*.joblib
+*.pkl
+artifacts/
+
+# ─── Data (never commit data) ─────────────────────────────
+data/
+!data/samples/
+!data/samples/**
+*.db
+*.sqlite
+*.sqlite3
+*.parquet
+!data/samples/**/*.parquet
+
+# ─── Secrets ──────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+*.pem
+secrets/
+
+# ─── Node / Next.js ───────────────────────────────────────
+node_modules/
+.next/
+out/
+.vercel/
+*.tsbuildinfo
+next-env.d.ts
+.turbo/
+
+# ─── Editors / OS ─────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ─── Streamlit ────────────────────────────────────────────
+.streamlit/secrets.toml
