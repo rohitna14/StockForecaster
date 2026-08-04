@@ -19,7 +19,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 
 from forecaster.api.deps import close_provider_router
 from forecaster.api.errors import register_exception_handlers
-from forecaster.config import get_settings
+from forecaster.config import Environment, get_settings
 from forecaster.db.session import create_all, dispose_engine
 from forecaster.logging import configure_logging, get_logger, log_context
 
@@ -83,9 +83,21 @@ def create_app() -> FastAPI:
         openapi_url="/openapi.json",
     )
 
+    # Outside production, accept any localhost port. Dev servers shuffle ports
+    # whenever one is busy (Next falls back 3000 -> 3001 -> 3002), and a fixed
+    # allow-list turns that into a broken app with a misleading "cannot reach
+    # the API" error. The regex is deliberately NOT applied in production,
+    # where origins must be enumerated explicitly.
+    local_origin_regex = (
+        r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$"
+        if settings.environment is not Environment.PRODUCTION
+        else None
+    )
+
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.api_cors_origins,
+        allow_origin_regex=local_origin_regex,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

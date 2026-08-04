@@ -112,6 +112,41 @@ def test_unknown_job_is_404(client: TestClient) -> None:
     assert response.status_code == 404
 
 
+# ── CORS ──────────────────────────────────────────────────────────────────
+@pytest.mark.parametrize(
+    "origin",
+    [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",  # Next falls back when 3000 is busy
+        "http://127.0.0.1:3002",
+        "http://localhost:8501",  # Streamlit
+    ],
+)
+def test_local_dev_origins_are_allowed(client: TestClient, origin: str) -> None:
+    """Any localhost port must work in development.
+
+    Dev servers shuffle ports whenever one is busy, and `localhost` and
+    `127.0.0.1` are distinct origins to a browser. A fixed allow-list turns
+    either of those into a silently broken app: the server is healthy, curl
+    succeeds, server-rendered pages work, and only client-side fetches fail —
+    with a generic network error that never mentions CORS.
+    """
+    response = client.get("/api/v1/health", headers={"Origin": origin})
+    assert response.headers.get("access-control-allow-origin"), (
+        f"{origin} was blocked; browser fetches from it would fail"
+    )
+
+
+def test_foreign_origins_are_still_blocked(client: TestClient) -> None:
+    """The dev convenience must not become an open door."""
+    for origin in ("https://evil.com", "http://localhost.evil.com", "http://notlocalhost"):
+        response = client.get("/api/v1/health", headers={"Origin": origin})
+        assert not response.headers.get("access-control-allow-origin"), (
+            f"{origin} should not be allowed"
+        )
+
+
 # ── search ────────────────────────────────────────────────────────────────
 def test_instrument_search_paginates(client: TestClient) -> None:
     response = client.get("/api/v1/instruments", params={"limit": 5})
