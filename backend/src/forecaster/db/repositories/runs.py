@@ -38,7 +38,10 @@ def current_git_sha() -> str | None:
     try:
         result = subprocess.run(
             ["git", "rev-parse", "HEAD"],
-            capture_output=True, text=True, timeout=5, check=False,
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
         )
         return result.stdout.strip() or None if result.returncode == 0 else None
     except (OSError, subprocess.SubprocessError):
@@ -107,9 +110,7 @@ class RunRepository(Repository):
         if not folds:
             return 0
         rows = [{"run_id": run_id, **fold} for fold in folds]
-        return await self.upsert(
-            FoldMetric, rows, conflict_cols=["run_id", "fold_index"]
-        )
+        return await self.upsert(FoldMetric, rows, conflict_cols=["run_id", "fold_index"])
 
     async def save_aggregate(
         self,
@@ -151,8 +152,7 @@ class RunRepository(Repository):
         if not importances:
             return 0
         rows = [
-            {"run_id": run_id, "feature_name": name, "method": method,
-             "importance": float(value)}
+            {"run_id": run_id, "feature_name": name, "method": method, "importance": float(value)}
             for name, value in importances.items()
             if np.isfinite(value)
         ]
@@ -165,8 +165,12 @@ class RunRepository(Repository):
         return await self.session.get(ModelRun, run_id)
 
     async def latest_for_symbol(
-        self, symbol: str, *, model_name: str | None = None,
-        horizon: int | None = None, limit: int = 20,
+        self,
+        symbol: str,
+        *,
+        model_name: str | None = None,
+        horizon: int | None = None,
+        limit: int = 20,
     ) -> list[ModelRun]:
         stmt = (
             select(ModelRun)
@@ -182,11 +186,7 @@ class RunRepository(Repository):
         return list((await self.session.execute(stmt)).scalars().all())
 
     async def folds_for_run(self, run_id: uuid.UUID) -> list[FoldMetric]:
-        stmt = (
-            select(FoldMetric)
-            .where(FoldMetric.run_id == run_id)
-            .order_by(FoldMetric.fold_index)
-        )
+        stmt = select(FoldMetric).where(FoldMetric.run_id == run_id).order_by(FoldMetric.fold_index)
         return list((await self.session.execute(stmt)).scalars().all())
 
     async def aggregate_for_run(self, run_id: uuid.UUID) -> RunMetric | None:
@@ -211,9 +211,7 @@ class RunRepository(Repository):
         )
         return {name: float(value) for name, value in (await self.session.execute(stmt)).all()}
 
-    async def realize_predictions(
-        self, instrument_id: int, realized: dict[dt.date, float]
-    ) -> int:
+    async def realize_predictions(self, instrument_id: int, realized: dict[dt.date, float]) -> int:
         """Backfill ``y_true`` on predictions whose target bar has now occurred.
 
         This is what turns the ``predictions`` table into a genuine live

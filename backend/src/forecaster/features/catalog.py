@@ -109,8 +109,13 @@ def _tsi(df: pd.DataFrame) -> pd.Series:
     return mom.tsi(df["close"])
 
 
-@feature("awesome_oscillator", group="momentum", min_history=40, optional=True,
-         description="Awesome Oscillator (SMA5-SMA34 of median price)")
+@feature(
+    "awesome_oscillator",
+    group="momentum",
+    min_history=40,
+    optional=True,
+    description="Awesome Oscillator (SMA5-SMA34 of median price)",
+)
 def _ao(df: pd.DataFrame) -> pd.Series:
     median = (df["high"] + df["low"]) / 2.0
     return (mom.awesome_oscillator(df["high"], df["low"]) / median).rename("awesome_osc_norm")
@@ -161,8 +166,13 @@ def _aroon(df: pd.DataFrame) -> pd.DataFrame:
     return trend.aroon(df["high"], df["low"])
 
 
-@feature("ichimoku", group="trend", min_history=30, optional=True,
-         description="Ichimoku conversion/base lines (no forward-shifted cloud)")
+@feature(
+    "ichimoku",
+    group="trend",
+    min_history=30,
+    optional=True,
+    description="Ichimoku conversion/base lines (no forward-shifted cloud)",
+)
 def _ichimoku(df: pd.DataFrame) -> pd.DataFrame:
     raw = trend.ichimoku(df["high"], df["low"])
     return raw.div(df["close"], axis=0).add_suffix("_norm")
@@ -207,26 +217,44 @@ def _donchian(df: pd.DataFrame) -> pd.DataFrame:
     return vol.donchian(df["high"], df["low"], df["close"])
 
 
-@feature("parkinson_vol", group="volatility", min_history=25,
-         description="Parkinson high-low volatility estimator")
+@feature(
+    "parkinson_vol",
+    group="volatility",
+    min_history=25,
+    description="Parkinson high-low volatility estimator",
+)
 def _parkinson(df: pd.DataFrame) -> pd.Series:
     return vol.parkinson_volatility(df["high"], df["low"])
 
 
-@feature("garman_klass_vol", group="volatility", min_history=25, optional=True,
-         description="Garman-Klass OHLC volatility estimator")
+@feature(
+    "garman_klass_vol",
+    group="volatility",
+    min_history=25,
+    optional=True,
+    description="Garman-Klass OHLC volatility estimator",
+)
 def _gk(df: pd.DataFrame) -> pd.Series:
     return vol.garman_klass_volatility(df["open"], df["high"], df["low"], df["close"])
 
 
-@feature("vol_ratio_5_20", group="volatility", min_history=25,
-         description="Short/long volatility ratio (regime signal)")
+@feature(
+    "vol_ratio_5_20",
+    group="volatility",
+    min_history=25,
+    description="Short/long volatility ratio (regime signal)",
+)
 def _vol_ratio(df: pd.DataFrame) -> pd.Series:
     return vol.volatility_ratio(df["close"], 5, 20)
 
 
-@feature("ulcer_index", group="volatility", min_history=20, optional=True,
-         description="Ulcer index (RMS drawdown)")
+@feature(
+    "ulcer_index",
+    group="volatility",
+    min_history=20,
+    optional=True,
+    description="Ulcer index (RMS drawdown)",
+)
 def _ulcer(df: pd.DataFrame) -> pd.Series:
     return vol.ulcer_index(df["close"])
 
@@ -257,14 +285,23 @@ def _p2vwap(df: pd.DataFrame) -> pd.Series:
     return volm.price_to_vwap(df["high"], df["low"], df["close"], df["volume"], 20)
 
 
-@feature("chaikin_osc", group="volume", min_history=30, optional=True,
-         description="Chaikin oscillator, volume-normalised")
+@feature(
+    "chaikin_osc",
+    group="volume",
+    min_history=30,
+    optional=True,
+    description="Chaikin oscillator, volume-normalised",
+)
 def _chaikin(df: pd.DataFrame) -> pd.Series:
     return volm.chaikin_oscillator(df["high"], df["low"], df["close"], df["volume"])
 
 
-@feature("log_dollar_volume_20", group="volume", min_history=25,
-         description="log10 average daily dollar volume (liquidity)")
+@feature(
+    "log_dollar_volume_20",
+    group="volume",
+    min_history=25,
+    description="log10 average daily dollar volume (liquidity)",
+)
 def _dollar_vol(df: pd.DataFrame) -> pd.Series:
     return volm.dollar_volume(df["close"], df["volume"], 20)
 
@@ -280,8 +317,12 @@ def _kurt(df: pd.DataFrame) -> pd.Series:
     return stat.rolling_kurtosis(df["close"], 20)
 
 
-@feature("autocorr_20", group="statistical", min_history=30,
-         description="Lag-1 return autocorrelation (momentum vs mean-reversion regime)")
+@feature(
+    "autocorr_20",
+    group="statistical",
+    min_history=30,
+    description="Lag-1 return autocorrelation (momentum vs mean-reversion regime)",
+)
 def _autocorr(df: pd.DataFrame) -> pd.Series:
     return stat.autocorrelation(df["close"], 20, 1)
 
@@ -291,33 +332,51 @@ def _autocorr60(df: pd.DataFrame) -> pd.Series:
     return stat.autocorrelation(df["close"], 60, 1)
 
 
-@feature("drawdown_252", group="statistical", min_history=2,
-         description="Drawdown from rolling 1y high")
+@feature(
+    "drawdown_252", group="statistical", min_history=2, description="Drawdown from rolling 1y high"
+)
 def _dd(df: pd.DataFrame) -> pd.Series:
     return stat.drawdown_from_high(df["close"], 252)
 
 
-@feature("days_since_high_252", group="statistical", min_history=253,
-         description="Normalised bars since 1y high")
+@feature(
+    "days_since_high_252",
+    group="statistical",
+    min_history=253,
+    description="Normalised bars since 1y high",
+)
 def _dsh(df: pd.DataFrame) -> pd.Series:
     return stat.days_since_high(df["close"], 252)
 
 
-@feature("downside_dev_20", group="statistical", min_history=25,
-         description="Downside deviation (Sortino denominator)")
+@feature(
+    "downside_dev_20",
+    group="statistical",
+    min_history=25,
+    description="Downside deviation (Sortino denominator)",
+)
 def _dsd(df: pd.DataFrame) -> pd.Series:
     return stat.downside_deviation(df["close"], 20)
 
 
-@feature("hurst_100", group="statistical", min_history=110, optional=True,
-         description="Rolling Hurst exponent (expensive)")
+@feature(
+    "hurst_100",
+    group="statistical",
+    min_history=110,
+    optional=True,
+    description="Rolling Hurst exponent (expensive)",
+)
 def _hurst(df: pd.DataFrame) -> pd.Series:
     return stat.hurst_exponent(df["close"], 100)
 
 
 # ═══════════════════════════════════ calendar ═════════════════════════════
-@feature("calendar", group="calendar", min_history=1,
-         description="Day-of-week / month / turn-of-month effects")
+@feature(
+    "calendar",
+    group="calendar",
+    min_history=1,
+    description="Day-of-week / month / turn-of-month effects",
+)
 def _calendar(df: pd.DataFrame) -> pd.DataFrame:
     idx = pd.DatetimeIndex(df.index)
     return pd.DataFrame(
@@ -338,11 +397,7 @@ def _calendar(df: pd.DataFrame) -> pd.DataFrame:
 def _names(*groups: str, include_optional: bool = False) -> list[str]:
     from forecaster.features.registry import list_features
 
-    return [
-        s.name
-        for s in list_features(include_optional=include_optional)
-        if s.group in groups
-    ]
+    return [s.name for s in list_features(include_optional=include_optional) if s.group in groups]
 
 
 def feature_set(name: str) -> list[str]:

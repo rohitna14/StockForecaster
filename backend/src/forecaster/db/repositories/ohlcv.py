@@ -149,9 +149,9 @@ class OHLCVRepository(Repository):
 
     async def coverage(self, instrument_id: int) -> tuple[dt.date | None, dt.date | None, int]:
         """(first_date, last_date, bar_count) in a single round-trip."""
-        stmt = select(
-            func.min(OHLCVDaily.ts), func.max(OHLCVDaily.ts), func.count()
-        ).where(OHLCVDaily.instrument_id == instrument_id)
+        stmt = select(func.min(OHLCVDaily.ts), func.max(OHLCVDaily.ts), func.count()).where(
+            OHLCVDaily.instrument_id == instrument_id
+        )
         first, last, count = (await self.session.execute(stmt)).one()
         return first, last, int(count or 0)
 
@@ -163,7 +163,9 @@ class OHLCVRepository(Repository):
         return int(result.rowcount or 0)
 
     async def total_bars(self) -> int:
-        return int((await self.session.execute(select(func.count()).select_from(OHLCVDaily))).scalar_one())
+        return int(
+            (await self.session.execute(select(func.count()).select_from(OHLCVDaily))).scalar_one()
+        )
 
 
 def apply_adjustment(frame: pd.DataFrame) -> pd.DataFrame:

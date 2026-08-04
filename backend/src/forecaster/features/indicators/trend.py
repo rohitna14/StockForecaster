@@ -33,9 +33,7 @@ def wma(series: pd.Series, period: int) -> pd.Series:
     )
 
 
-def macd(
-    close: pd.Series, fast: int = 12, slow: int = 26, signal: int = 9
-) -> pd.DataFrame:
+def macd(close: pd.Series, fast: int = 12, slow: int = 26, signal: int = 9) -> pd.DataFrame:
     """MACD line, signal line, and histogram."""
     ema_fast = close.ewm(span=fast, adjust=False, min_periods=fast).mean()
     ema_slow = close.ewm(span=slow, adjust=False, min_periods=slow).mean()
@@ -44,9 +42,7 @@ def macd(
     return pd.DataFrame({"macd": line, "macd_signal": sig, "macd_hist": line - sig})
 
 
-def adx(
-    high: pd.Series, low: pd.Series, close: pd.Series, period: int = 14
-) -> pd.DataFrame:
+def adx(high: pd.Series, low: pd.Series, close: pd.Series, period: int = 14) -> pd.DataFrame:
     """Average Directional Index with +DI / -DI.
 
     ADX measures trend *strength* irrespective of direction: above ~25 is a
@@ -60,14 +56,22 @@ def adx(
     minus_dm = pd.Series(np.where((down > up) & (down > 0), down, 0.0), index=high.index)
 
     prev_close = close.shift(1)
-    tr = pd.concat(
-        [high - low, (high - prev_close).abs(), (low - prev_close).abs()], axis=1
-    ).max(axis=1)
+    tr = pd.concat([high - low, (high - prev_close).abs(), (low - prev_close).abs()], axis=1).max(
+        axis=1
+    )
 
     alpha = 1 / period
     atr_ = tr.ewm(alpha=alpha, adjust=False, min_periods=period).mean()
-    plus_di = 100.0 * plus_dm.ewm(alpha=alpha, adjust=False, min_periods=period).mean() / atr_.replace(0.0, np.nan)
-    minus_di = 100.0 * minus_dm.ewm(alpha=alpha, adjust=False, min_periods=period).mean() / atr_.replace(0.0, np.nan)
+    plus_di = (
+        100.0
+        * plus_dm.ewm(alpha=alpha, adjust=False, min_periods=period).mean()
+        / atr_.replace(0.0, np.nan)
+    )
+    minus_di = (
+        100.0
+        * minus_dm.ewm(alpha=alpha, adjust=False, min_periods=period).mean()
+        / atr_.replace(0.0, np.nan)
+    )
 
     dx = 100.0 * (plus_di - minus_di).abs() / (plus_di + minus_di).replace(0.0, np.nan)
     adx_ = dx.ewm(alpha=alpha, adjust=False, min_periods=period).mean()
@@ -83,8 +87,9 @@ def aroon(high: pd.Series, low: pd.Series, period: int = 25) -> pd.DataFrame:
     down = low.rolling(period + 1, min_periods=period + 1).apply(
         lambda x: 100.0 * (period - (len(x) - 1 - int(np.argmin(x)))) / period, raw=True
     )
-    return pd.DataFrame({f"aroon_up_{period}": up, f"aroon_down_{period}": down,
-                         f"aroon_osc_{period}": up - down})
+    return pd.DataFrame(
+        {f"aroon_up_{period}": up, f"aroon_down_{period}": down, f"aroon_osc_{period}": up - down}
+    )
 
 
 def price_to_ma(close: pd.Series, period: int) -> pd.Series:
@@ -114,5 +119,6 @@ def ichimoku(high: pd.Series, low: pd.Series) -> pd.DataFrame:
     """
     conv = (high.rolling(9, min_periods=9).max() + low.rolling(9, min_periods=9).min()) / 2.0
     base = (high.rolling(26, min_periods=26).max() + low.rolling(26, min_periods=26).min()) / 2.0
-    return pd.DataFrame({"ichimoku_conv": conv, "ichimoku_base": base,
-                         "ichimoku_conv_base_gap": conv - base})
+    return pd.DataFrame(
+        {"ichimoku_conv": conv, "ichimoku_base": base, "ichimoku_conv_base_gap": conv - base}
+    )

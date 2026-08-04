@@ -129,9 +129,7 @@ class Backtester:
         """
         cfg = self.config
 
-        frame = pd.DataFrame({"close": prices}).join(
-            predictions.rename("prediction"), how="inner"
-        )
+        frame = pd.DataFrame({"close": prices}).join(predictions.rename("prediction"), how="inner")
         if opens is not None:
             frame = frame.join(opens.rename("open"), how="left")
         else:
@@ -182,12 +180,21 @@ class Backtester:
         trades = self._extract_trades(frame, positions, equity)
         cost_report = self._cost_report(positions, cost_series, net_returns)
         stats = self._compute_stats(
-            net_returns, gross_returns, bar_returns, equity, benchmark_equity,
-            drawdown, cost_series, positions, trades, used_opens=opens is not None,
+            net_returns,
+            gross_returns,
+            bar_returns,
+            equity,
+            benchmark_equity,
+            drawdown,
+            cost_series,
+            positions,
+            trades,
+            used_opens=opens is not None,
         )
 
-        log.info("backtest_complete", **{k: v for k, v in stats.items()
-                                         if isinstance(v, (int, float))})
+        log.info(
+            "backtest_complete", **{k: v for k, v in stats.items() if isinstance(v, (int, float))}
+        )
 
         return BacktestResult(
             equity=equity,
@@ -229,9 +236,11 @@ class Backtester:
             scale = (cfg.target_volatility / trailing_vol.replace(0.0, np.nan)).clip(0.0, 3.0)
             positions = np.sign(pred) * scale.fillna(0.0)
 
-        return pd.Series(positions, index=predictions.index).clip(
-            -cfg.max_leverage, cfg.max_leverage
-        ).fillna(0.0)
+        return (
+            pd.Series(positions, index=predictions.index)
+            .clip(-cfg.max_leverage, cfg.max_leverage)
+            .fillna(0.0)
+        )
 
     # ── reporting ─────────────────────────────────────────────────────────
     def _extract_trades(
@@ -275,8 +284,16 @@ class Backtester:
 
         return pd.DataFrame(
             rows,
-            columns=["entry_date", "exit_date", "side", "entry_price", "exit_price",
-                     "pnl_pct", "pnl", "bars_held"],
+            columns=[
+                "entry_date",
+                "exit_date",
+                "side",
+                "entry_price",
+                "exit_price",
+                "pnl_pct",
+                "pnl",
+                "bars_held",
+            ],
         )
 
     def _cost_report(
@@ -319,7 +336,11 @@ class Backtester:
         beta = float("nan")
         if np.std(bench) > 1e-12:
             beta = float(np.cov(net, bench)[0, 1] / np.var(bench))
-        alpha = float(np.mean(net) - beta * np.mean(bench)) * cfg.periods_per_year if np.isfinite(beta) else float("nan")
+        alpha = (
+            float(np.mean(net) - beta * np.mean(bench)) * cfg.periods_per_year
+            if np.isfinite(beta)
+            else float("nan")
+        )
 
         wins = trades["pnl_pct"] > 0 if not trades.empty else pd.Series(dtype=bool)
 
@@ -327,18 +348,24 @@ class Backtester:
             "total_return": total_return,
             "benchmark_return": benchmark_return,
             "excess_return": total_return - benchmark_return,
-            "cagr": float((1 + total_return) ** (1 / years) - 1) if total_return > -1 else float("nan"),
+            "cagr": float((1 + total_return) ** (1 / years) - 1)
+            if total_return > -1
+            else float("nan"),
             "sharpe": M.sharpe_ratio(net, cfg.periods_per_year),
             "benchmark_sharpe": M.sharpe_ratio(bench, cfg.periods_per_year),
             "sortino": M.sortino_ratio(net, cfg.periods_per_year),
             "calmar": M.calmar_ratio(net, cfg.periods_per_year),
             "max_drawdown": float(drawdown.min()),
-            "volatility": float(np.std(net, ddof=1) * np.sqrt(cfg.periods_per_year)) if len(net) > 1 else float("nan"),
+            "volatility": float(np.std(net, ddof=1) * np.sqrt(cfg.periods_per_year))
+            if len(net) > 1
+            else float("nan"),
             "profit_factor": M.profit_factor(net),
             "hit_rate": M.hit_rate(net),
             "win_rate": float(wins.mean()) if len(wins) else float("nan"),
             "n_trades": int(len(trades)),
-            "avg_bars_held": float(trades["bars_held"].mean()) if not trades.empty else float("nan"),
+            "avg_bars_held": float(trades["bars_held"].mean())
+            if not trades.empty
+            else float("nan"),
             "turnover": float(positions.diff().abs().sum()),
             "total_costs": float(costs.sum()),
             "gross_sharpe": M.sharpe_ratio(gross_returns.to_numpy(), cfg.periods_per_year),

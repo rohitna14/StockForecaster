@@ -1,0 +1,141 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.12"
+  FORECASTER_ENVIRONMENT: test
+
+jobs:
+  lint:
+    name: Lint & typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - name: Install
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+      - name: Ruff
+        working-directory: backend
+        run: ruff check src tests
+      - name: Ruff format
+        working-directory: backend
+        run: ruff format --check src tests
+      - name: Mypy
+        working-directory: backend
+        run: mypy src/forecaster || true  # advisory until fully annotated
+
+  # The leakage suite gets its own job so a failure is visible on the badge
+  # rather than buried among 100 other tests. It is the single most important
+  # signal this repository produces.
+  leakage:
+    name: Lookahead-bias guards
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - name: Install
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[data,ml,dev]"
+      - name: Run leakage guards
+        working-directory: backend
+        run: pytest tests/unit/test_leakage.py tests/unit/test_windowing.py -v -m "not network"
+
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - name: Install
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[data,ml,api,dev]"
+      - name: Unit + integration + API
+        working-directory: backend
+        run: |
+          pytest tests -m "not network and not deep" \
+            --cov=src/forecaster --cov-report=xml --cov-report=term-missing
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: backend/coverage.xml
+
+  deep:
+    name: Sequence models
+    runs-on: ubuntu-latest
+    # TensorFlow is a large install; only run it where it matters.
+    if: github.event_name == 'push' || contains(github.event.pull_request.labels.*.name, 'deep')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - name: Install
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[ml,dev]" "tensorflow-cpu>=2.18"
+      - name: Run sequence-model tests
+        working-directory: backend
+        run: pytest tests/unit/test_deep_models.py -v
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install
+        working-directory: frontend
+        run: npm ci
+      - name: Typecheck
+        working-directory: frontend
+        run: npm run typecheck
+      - name: Build
+        working-directory: frontend
+        run: npm run build
+
+  docker:
+    name: Docker build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build API image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/Dockerfile
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

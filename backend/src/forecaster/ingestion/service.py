@@ -89,9 +89,7 @@ class IngestionService:
                         return 0, rows_lake
                     instrument = await self._create_instrument(session, symbol)
 
-                should_write_hot = (
-                    to_hot if to_hot is not None else instrument.tier == Tier.HOT
-                )
+                should_write_hot = to_hot if to_hot is not None else instrument.tier == Tier.HOT
                 if not should_write_hot:
                     return 0, rows_lake
 
@@ -128,9 +126,7 @@ class IngestionService:
         async def one(sym: str) -> None:
             async with semaphore:
                 try:
-                    hot, lake = await self.ingest_symbol(
-                        sym, start=start, end=end, to_hot=to_hot
-                    )
+                    hot, lake = await self.ingest_symbol(sym, start=start, end=end, to_hot=to_hot)
                 except Exception as exc:  # noqa: BLE001 -- one bad ticker must not abort the batch
                     summary.failed += 1
                     summary.failures[sym] = str(exc)

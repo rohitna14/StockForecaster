@@ -28,9 +28,7 @@ def make_ohlcv(
     """
     rng = np.random.default_rng(seed)
     dt = 1.0 / 252.0
-    shocks = rng.normal(
-        (annual_drift - 0.5 * annual_vol**2) * dt, annual_vol * np.sqrt(dt), size=n
-    )
+    shocks = rng.normal((annual_drift - 0.5 * annual_vol**2) * dt, annual_vol * np.sqrt(dt), size=n)
     close = start_price * np.exp(np.cumsum(shocks))
 
     # Intraday range scaled to daily volatility.
@@ -77,9 +75,14 @@ def make_predictable_ohlcv(n: int = 1500, *, seed: int = 7, strength: float = 0.
 
     index = pd.bdate_range(start="2018-01-01", periods=n, name="ts")
     return pd.DataFrame(
-        {"open": open_, "high": np.maximum(high, np.maximum(open_, close)),
-         "low": np.minimum(low, np.minimum(open_, close)),
-         "close": close, "adj_close": close, "volume": volume},
+        {
+            "open": open_,
+            "high": np.maximum(high, np.maximum(open_, close)),
+            "low": np.minimum(low, np.minimum(open_, close)),
+            "close": close,
+            "adj_close": close,
+            "volume": volume,
+        },
         index=index,
     )
 
@@ -107,7 +110,13 @@ def flat_ohlcv() -> pd.DataFrame:
     n = 300
     index = pd.bdate_range("2020-01-01", periods=n, name="ts")
     return pd.DataFrame(
-        {"open": 50.0, "high": 50.0, "low": 50.0, "close": 50.0,
-         "adj_close": 50.0, "volume": 1_000_000},
+        {
+            "open": 50.0,
+            "high": 50.0,
+            "low": 50.0,
+            "close": 50.0,
+            "adj_close": 50.0,
+            "volume": 1_000_000,
+        },
         index=index,
     )

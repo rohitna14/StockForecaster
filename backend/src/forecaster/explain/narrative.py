@@ -227,12 +227,21 @@ def describe_forecast(
     headline number with the caveat buried underneath is how forecasting tools
     mislead people, and this project's whole argument is that it should not.
     """
-    if target_type == "vol_ratio":
+    # The vol_ratio target lives in log space: a prediction of 0.2 means
+    # exp(0.2) - 1 = +22% volatility, not +20%. The bounds must go through the
+    # same transform as the point estimate, or the interval reads as nonsense
+    # (a raw log lower bound of -0.98 would print as "-98%", implying volatility
+    # could fall to nearly zero).
+    is_log_ratio = target_type == "vol_ratio"
+
+    def to_pct(value: float) -> float:
+        return float(np.expm1(value) * 100) if is_log_ratio else float(value * 100)
+
+    if is_log_ratio:
         direction = "more volatile" if prediction > 0 else "calmer"
-        magnitude = abs(np.expm1(prediction)) * 100
         core = (
             f"Over the next {horizon} trading days, the model expects {symbol} to be "
-            f"about {magnitude:.0f}% {direction} than it has been recently."
+            f"about {abs(to_pct(prediction)):.0f}% {direction} than it has been recently."
         )
     else:
         direction = "up" if prediction > 0 else "down"
@@ -244,9 +253,14 @@ def describe_forecast(
     parts = [core]
 
     if lower is not None and upper is not None and np.isfinite(lower) and np.isfinite(upper):
+        low_pct, high_pct = to_pct(lower), to_pct(upper)
+        span = (
+            f"{low_pct:+.0f}% to {high_pct:+.0f}% change in volatility"
+            if is_log_ratio
+            else f"{low_pct:+.2f}% to {high_pct:+.2f}%"
+        )
         parts.append(
-            f"The 80% range runs from {lower * 100:+.2f}% to {upper * 100:+.2f}% — "
-            f"that width is the honest part of this forecast."
+            f"The 80% range runs from {span} — that width is the honest part of this forecast."
         )
 
     if skill_pct is not None and np.isfinite(skill_pct):

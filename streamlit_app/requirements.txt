@@ -1,0 +1,7 @@
+# Thin client only. This app contains ZERO forecasting logic -- it speaks HTTP
+# to the FastAPI service and renders the response. If a dependency on pandas,
+# scikit-learn or the `forecaster` package ever appears here, the separation has
+# been broken and the "client-agnostic API" claim is no longer true.
+streamlit>=1.40
+httpx>=0.27
+plotly>=5.24

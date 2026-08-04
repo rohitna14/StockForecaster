@@ -24,7 +24,9 @@ def rolling_skew(close: pd.Series, period: int = 20) -> pd.Series:
 
 def rolling_kurtosis(close: pd.Series, period: int = 20) -> pd.Series:
     """Excess kurtosis -- fat-tailedness of the recent return distribution."""
-    return close.pct_change().rolling(period, min_periods=period).kurt().rename(f"kurtosis_{period}")
+    return (
+        close.pct_change().rolling(period, min_periods=period).kurt().rename(f"kurtosis_{period}")
+    )
 
 
 def autocorrelation(close: pd.Series, period: int = 20, lag: int = 1) -> pd.Series:
@@ -110,9 +112,9 @@ def downside_deviation(close: pd.Series, period: int = 20) -> pd.Series:
     """Std of negative returns only -- the denominator of the Sortino ratio."""
     returns = close.pct_change()
     negative = returns.where(returns < 0, np.nan)
-    return (
-        negative.rolling(period, min_periods=3).std(ddof=1) * np.sqrt(TRADING_DAYS)
-    ).rename(f"downside_dev_{period}")
+    return (negative.rolling(period, min_periods=3).std(ddof=1) * np.sqrt(TRADING_DAYS)).rename(
+        f"downside_dev_{period}"
+    )
 
 
 def gap_open(open_: pd.Series, close: pd.Series) -> pd.Series:

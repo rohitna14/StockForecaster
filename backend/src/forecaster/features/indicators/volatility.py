@@ -11,9 +11,11 @@ TRADING_DAYS = 252
 def true_range(high: pd.Series, low: pd.Series, close: pd.Series) -> pd.Series:
     """Max of (H-L), |H-C_prev|, |L-C_prev| -- captures overnight gaps."""
     prev_close = close.shift(1)
-    return pd.concat(
-        [high - low, (high - prev_close).abs(), (low - prev_close).abs()], axis=1
-    ).max(axis=1).rename("true_range")
+    return (
+        pd.concat([high - low, (high - prev_close).abs(), (low - prev_close).abs()], axis=1)
+        .max(axis=1)
+        .rename("true_range")
+    )
 
 
 def atr(high: pd.Series, low: pd.Series, close: pd.Series, period: int = 14) -> pd.Series:
@@ -57,8 +59,11 @@ def keltner(
     middle = close.ewm(span=period, adjust=False, min_periods=period).mean()
     band = mult * atr(high, low, close, period)
     return pd.DataFrame(
-        {"keltner_upper": middle + band, "keltner_lower": middle - band,
-         "keltner_pct": (close - (middle - band)) / (2 * band).replace(0.0, np.nan)}
+        {
+            "keltner_upper": middle + band,
+            "keltner_lower": middle - band,
+            "keltner_pct": (close - (middle - band)) / (2 * band).replace(0.0, np.nan),
+        }
     )
 
 
@@ -68,8 +73,7 @@ def donchian(high: pd.Series, low: pd.Series, close: pd.Series, period: int = 20
     lower = low.rolling(period, min_periods=period).min()
     span = (upper - lower).replace(0.0, np.nan)
     return pd.DataFrame(
-        {f"donchian_pct_{period}": (close - lower) / span,
-         f"donchian_width_{period}": span / close}
+        {f"donchian_pct_{period}": (close - lower) / span, f"donchian_width_{period}": span / close}
     )
 
 

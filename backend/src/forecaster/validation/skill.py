@@ -101,15 +101,31 @@ def skill_score(
 
     n = min(len(t), len(b))
     if n == 0:
-        return SkillResult(metric_name, float("nan"), float("nan"), float("nan"),
-                           float("nan"), 0, baseline_name, higher_is_better)
+        return SkillResult(
+            metric_name,
+            float("nan"),
+            float("nan"),
+            float("nan"),
+            float("nan"),
+            0,
+            baseline_name,
+            higher_is_better,
+        )
 
     model_score = float(metric(t[:n], m[:n]))
     baseline_score = float(metric(t[:n], b[:n]))
 
     if not np.isfinite(baseline_score) or abs(baseline_score) < _EPS:
-        return SkillResult(metric_name, model_score, baseline_score, float("nan"),
-                           float("nan"), n, baseline_name, higher_is_better)
+        return SkillResult(
+            metric_name,
+            model_score,
+            baseline_score,
+            float("nan"),
+            float("nan"),
+            n,
+            baseline_name,
+            higher_is_better,
+        )
 
     if higher_is_better:
         skill = (model_score - baseline_score) / abs(baseline_score)
@@ -129,34 +145,52 @@ def skill_score(
 
 
 def rmse_skill(
-    y_true: np.ndarray, y_pred_model: np.ndarray, y_pred_baseline: np.ndarray,
+    y_true: np.ndarray,
+    y_pred_model: np.ndarray,
+    y_pred_baseline: np.ndarray,
     baseline_name: str = "naive_last_price",
 ) -> SkillResult:
     """RMSE reduction versus the baseline. The strictest variant."""
     return skill_score(
-        y_true, y_pred_model, y_pred_baseline,
-        metric=rmse, metric_name="rmse", baseline_name=baseline_name,
+        y_true,
+        y_pred_model,
+        y_pred_baseline,
+        metric=rmse,
+        metric_name="rmse",
+        baseline_name=baseline_name,
     )
 
 
 def mse_skill(
-    y_true: np.ndarray, y_pred_model: np.ndarray, y_pred_baseline: np.ndarray,
+    y_true: np.ndarray,
+    y_pred_model: np.ndarray,
+    y_pred_baseline: np.ndarray,
     baseline_name: str = "naive_last_price",
 ) -> SkillResult:
     """MSE reduction -- the classical Brier/Murphy skill score."""
     return skill_score(
-        y_true, y_pred_model, y_pred_baseline,
-        metric=mse, metric_name="mse", baseline_name=baseline_name,
+        y_true,
+        y_pred_model,
+        y_pred_baseline,
+        metric=mse,
+        metric_name="mse",
+        baseline_name=baseline_name,
     )
 
 
 def mae_skill(
-    y_true: np.ndarray, y_pred_model: np.ndarray, y_pred_baseline: np.ndarray,
+    y_true: np.ndarray,
+    y_pred_model: np.ndarray,
+    y_pred_baseline: np.ndarray,
     baseline_name: str = "naive_last_price",
 ) -> SkillResult:
     return skill_score(
-        y_true, y_pred_model, y_pred_baseline,
-        metric=mae, metric_name="mae", baseline_name=baseline_name,
+        y_true,
+        y_pred_model,
+        y_pred_baseline,
+        metric=mae,
+        metric_name="mae",
+        baseline_name=baseline_name,
     )
 
 
@@ -196,8 +230,16 @@ def directional_skill(
         baseline_name = "base_rate"
 
     if not np.isfinite(baseline_acc) or baseline_acc < _EPS:
-        return SkillResult("directional_accuracy", model_acc, baseline_acc,
-                           float("nan"), float("nan"), len(t), baseline_name, True)
+        return SkillResult(
+            "directional_accuracy",
+            model_acc,
+            baseline_acc,
+            float("nan"),
+            float("nan"),
+            len(t),
+            baseline_name,
+            True,
+        )
 
     skill = (model_acc - baseline_acc) / baseline_acc
     return SkillResult(

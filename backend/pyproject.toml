@@ -111,11 +111,20 @@ select = [
 ignore = [
     "ANN401",    # Any is sometimes correct
     "B008",      # FastAPI Depends() in defaults is idiomatic
+    # `X` for a feature matrix and `y` for a target vector is the universal
+    # convention in scikit-learn-shaped code. Renaming them to satisfy PEP 8
+    # would make this codebase read as unfamiliar to anyone who works in ML.
+    "N803",      # argument name should be lowercase (X_train, X_test)
+    "N806",      # variable in function should be lowercase (X, X_win)
+    "N812",      # lowercase imported as non-lowercase (L = tf.keras.layers)
+    "RUF046",    # int() on an already-int-typed expression: explicit is fine here
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["ANN", "S101"]
-"alembic/**" = ["ANN", "E501", "I001"]
+"tests/**" = ["ANN", "S101", "E501", "ANN202"]
+"alembic/**" = ["ANN", "E501", "I001", "N999"]
+# Model wrappers are thin declarative shims; annotating every builder adds noise.
+"src/forecaster/models/*.py" = ["ANN202"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["forecaster"]

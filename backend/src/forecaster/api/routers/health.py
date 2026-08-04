@@ -20,9 +20,7 @@ router = APIRouter(tags=["health"])
 async def health() -> HealthResponse:
     """Liveness. Cheap, no dependencies -- safe for a container probe."""
     settings = get_settings()
-    return HealthResponse(
-        status="ok", version="0.1.0", environment=settings.environment.value
-    )
+    return HealthResponse(status="ok", version="0.1.0", environment=settings.environment.value)
 
 
 @router.get("/health/ready", response_model=ReadinessResponse)
@@ -72,13 +70,20 @@ async def methodology() -> dict[str, Any]:
             "model_selection": "on all folds except the last; the leaderboard is a report, not a selection step",
         },
         "baselines": [
-            "naive_last_price", "historical_mean", "drift", "ewma",
-            "seasonal_naive", "always_long", "coin_flip",
+            "naive_last_price",
+            "historical_mean",
+            "drift",
+            "ewma",
+            "seasonal_naive",
+            "always_long",
+            "coin_flip",
         ],
         "reference_baseline": "naive_last_price",
         "significance_tests": [
-            "diebold_mariano", "block_bootstrap_ci",
-            "probability_of_backtest_overfitting", "deflated_sharpe_ratio",
+            "diebold_mariano",
+            "block_bootstrap_ci",
+            "probability_of_backtest_overfitting",
+            "deflated_sharpe_ratio",
         ],
         "prediction_intervals": {
             "method": "split conformal",

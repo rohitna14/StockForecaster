@@ -87,7 +87,11 @@ def smape(y_true: np.ndarray, y_pred: np.ndarray) -> float:
         return float("nan")
     denom = (np.abs(t) + np.abs(p)) / 2.0
     mask = denom > _EPS
-    return float(np.mean(np.abs(t[mask] - p[mask]) / denom[mask]) * 100.0) if mask.any() else float("nan")
+    return (
+        float(np.mean(np.abs(t[mask] - p[mask]) / denom[mask]) * 100.0)
+        if mask.any()
+        else float("nan")
+    )
 
 
 # ═══════════════════════════════ directional ═══════════════════════════════

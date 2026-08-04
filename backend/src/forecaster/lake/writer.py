@@ -48,9 +48,7 @@ def symbol_path(symbol: str, year: int, root: Path | None = None) -> Path:
     return ohlcv_root(root) / f"symbol={symbol.upper()}" / f"year={year}" / "data.parquet"
 
 
-def write_bars(
-    symbol: str, frame: pd.DataFrame, source: str, *, root: Path | None = None
-) -> int:
+def write_bars(symbol: str, frame: pd.DataFrame, source: str, *, root: Path | None = None) -> int:
     """Write (or merge into) the lake, partitioned by symbol and year.
 
     Existing partitions are read, merged on ``ts`` with the new rows winning,

@@ -36,7 +36,9 @@ log = get_logger(__name__)
 router = APIRouter(tags=["runs"])
 
 
-def _run_evaluation(request: EvaluationRequest, frame: pd.DataFrame, *, progress: Any = None) -> Any:
+def _run_evaluation(
+    request: EvaluationRequest, frame: pd.DataFrame, *, progress: Any = None
+) -> Any:
     """Executed on a worker thread by the job queue."""
     from forecaster.validation.harness import EvaluationConfig, EvaluationHarness
 
@@ -87,9 +89,7 @@ def _to_leaderboard(report: Any) -> list[LeaderboardRow]:
 
 
 @router.post("/runs", response_model=EvaluationResponse, status_code=status.HTTP_200_OK)
-async def create_run(
-    request: EvaluationRequest, ohlcv: OHLCVRepoDep
-) -> EvaluationResponse:
+async def create_run(request: EvaluationRequest, ohlcv: OHLCVRepoDep) -> EvaluationResponse:
     """Run a walk-forward evaluation synchronously and return the leaderboard.
 
     Suitable for a handful of fast models. For sequence models or a large model
@@ -122,9 +122,7 @@ async def create_run(
 
 
 @router.post("/runs/async", status_code=status.HTTP_202_ACCEPTED)
-async def create_run_async(
-    request: EvaluationRequest, ohlcv: OHLCVRepoDep
-) -> dict[str, Any]:
+async def create_run_async(request: EvaluationRequest, ohlcv: OHLCVRepoDep) -> dict[str, Any]:
     """Queue an evaluation. Returns a job id to poll or stream."""
     frame, _ = await load_bars(request.symbol, ohlcv)
     job = get_queue().submit(
@@ -138,7 +136,11 @@ async def create_run_async(
             "models": request.models,
         },
     )
-    return {**job.as_dict(), "poll": f"/api/v1/jobs/{job.id}", "stream": f"/api/v1/ws/jobs/{job.id}"}
+    return {
+        **job.as_dict(),
+        "poll": f"/api/v1/jobs/{job.id}",
+        "stream": f"/api/v1/ws/jobs/{job.id}",
+    }
 
 
 @router.get("/jobs/{job_id}")
@@ -254,8 +256,7 @@ async def explain_run(run_id: uuid.UUID, runs: RunRepoDep) -> ExplanationRespons
         method="native",
         top_features=[{"feature": name, "importance": value} for name, value in top],
         narrative=(
-            f"{run.model_name} trained on {run.horizon_days}-day-ahead "
-            f"{run.target_type} targets."
+            f"{run.model_name} trained on {run.horizon_days}-day-ahead {run.target_type} targets."
         ),
         drivers=describe_drivers(top),
     )
@@ -314,9 +315,15 @@ async def get_forecast(
         skill_pct=skill_pct,
         dm_pvalue=dm_p,
         narrative=describe_forecast(
-            symbol=symbol.upper(), model_name=model, prediction=prediction,
-            lower=lower, upper=upper, horizon=horizon,
-            skill_pct=skill_pct, dm_pvalue=dm_p, target_type=target_type,
+            symbol=symbol.upper(),
+            model_name=model,
+            prediction=prediction,
+            lower=lower,
+            upper=upper,
+            horizon=horizon,
+            skill_pct=skill_pct,
+            dm_pvalue=dm_p,
+            target_type=target_type,
         ),
         is_informative=bool(skill_pct is not None and skill_pct > 0),
     )
@@ -325,9 +332,7 @@ async def get_forecast(
 @router.get("/glossary", response_model=list[GlossaryEntry])
 async def glossary() -> list[GlossaryEntry]:
     """Plain-English metric definitions, powering the UI's explain mode."""
-    return [
-        GlossaryEntry(key=key, **entry.as_dict()) for key, entry in METRIC_GLOSSARY.items()
-    ]
+    return [GlossaryEntry(key=key, **entry.as_dict()) for key, entry in METRIC_GLOSSARY.items()]
 
 
 @router.get("/baselines")
@@ -343,8 +348,7 @@ async def baselines() -> dict[str, Any]:
             "not a result."
         ),
         "baselines": [
-            {"name": name, "display_name": cls.display_name,
-             "is_classifier": cls.is_classifier}
+            {"name": name, "display_name": cls.display_name, "is_classifier": cls.is_classifier}
             for name, cls in BASELINES.items()
         ],
     }

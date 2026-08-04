@@ -1,11 +1,11 @@
 """Command-line interface.
 
-    forecaster db init                  create the schema
-    forecaster seed                     load instruments + universes
-    forecaster ingest AAPL MSFT --hot   fetch history into both tiers
-    forecaster ingest --universe demo --hot
-    forecaster status                   coverage across hot + cold tiers
-    forecaster promote NVDA             cold -> hot
+forecaster db init                  create the schema
+forecaster seed                     load instruments + universes
+forecaster ingest AAPL MSFT --hot   fetch history into both tiers
+forecaster ingest --universe demo --hot
+forecaster status                   coverage across hot + cold tiers
+forecaster promote NVDA             cold -> hot
 """
 
 from __future__ import annotations
@@ -113,7 +113,9 @@ def ingest(
     symbols: Annotated[list[str] | None, typer.Argument(help="Ticker symbols.")] = None,
     universe: Annotated[str | None, typer.Option("--universe", "-u")] = None,
     years: Annotated[int, typer.Option("--years", "-y", help="Years of history.")] = 5,
-    hot: Annotated[bool, typer.Option("--hot", help="Also write to the Postgres hot tier.")] = False,
+    hot: Annotated[
+        bool, typer.Option("--hot", help="Also write to the Postgres hot tier.")
+    ] = False,
     concurrency: Annotated[int, typer.Option("--concurrency", "-c")] = 4,
     limit: Annotated[int | None, typer.Option("--limit", help="Cap symbols (testing).")] = None,
 ) -> None:
@@ -187,8 +189,10 @@ def ingest(
             for sym, err in list(summary.failures.items())[:5]:
                 console.print(f"  [red]{sym}[/]: {err[:110]}")
         if summary.empties:
-            console.print(f"[dim]{len(summary.empties)} symbols had no data: "
-                          f"{', '.join(summary.empties[:10])}[/]")
+            console.print(
+                f"[dim]{len(summary.empties)} symbols had no data: "
+                f"{', '.join(summary.empties[:10])}[/]"
+            )
 
     asyncio.run(run())
 
@@ -277,7 +281,9 @@ def lake_summary(
     for col in ("symbol", "first_date", "last_date", "rows"):
         table.add_column(col, justify="right" if col == "rows" else "left")
     for _, row in frame.head(limit).iterrows():
-        table.add_row(row["symbol"], str(row["first_date"]), str(row["last_date"]), f"{row['rows']:,}")
+        table.add_row(
+            row["symbol"], str(row["first_date"]), str(row["last_date"]), f"{row['rows']:,}"
+        )
     console.print(table)
     if len(frame) > limit:
         console.print(f"[dim]... and {len(frame) - limit} more[/]")

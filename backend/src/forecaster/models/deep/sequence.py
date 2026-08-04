@@ -25,9 +25,9 @@ import numpy as np
 os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "3")
 os.environ.setdefault("TF_ENABLE_ONEDNN_OPTS", "0")
 
-from forecaster.logging import get_logger  # noqa: E402
-from forecaster.models.base import Forecaster, ModelContext  # noqa: E402
-from forecaster.models.deep.windowing import (  # noqa: E402
+from forecaster.logging import get_logger
+from forecaster.models.base import Forecaster, ModelContext
+from forecaster.models.deep.windowing import (
     DEFAULT_LOOKBACK,
     align_predictions,
     make_windows,
@@ -62,9 +62,14 @@ class SequenceForecaster(Forecaster):
         **kwargs: Any,
     ) -> None:
         super().__init__(
-            lookback=lookback, epochs=epochs, batch_size=batch_size,
-            learning_rate=learning_rate, patience=patience,
-            validation_fraction=validation_fraction, random_state=random_state, **kwargs,
+            lookback=lookback,
+            epochs=epochs,
+            batch_size=batch_size,
+            learning_rate=learning_rate,
+            patience=patience,
+            validation_fraction=validation_fraction,
+            random_state=random_state,
+            **kwargs,
         )
         self.lookback = lookback
         self.epochs = epochs
@@ -126,7 +131,8 @@ class SequenceForecaster(Forecaster):
         ]
 
         history = self._model.fit(
-            X_tr, y_tr,
+            X_tr,
+            y_tr,
             validation_data=(X_val, y_val),
             epochs=self.epochs,
             batch_size=self.batch_size,
@@ -231,8 +237,11 @@ class TCNForecaster(SequenceForecaster):
         for dilation in (1, 2, 4, 8):
             residual = x
             x = L.Conv1D(
-                filters=32, kernel_size=3, padding="causal",
-                dilation_rate=dilation, activation="relu",
+                filters=32,
+                kernel_size=3,
+                padding="causal",
+                dilation_rate=dilation,
+                activation="relu",
             )(x)
             x = L.LayerNormalization()(x)
             x = L.Dropout(0.15)(x)
@@ -260,7 +269,9 @@ class TransformerForecaster(SequenceForecaster):
     name = "transformer"
     display_name = "Transformer"
 
-    def __init__(self, num_heads: int = 4, key_dim: int = 16, ff_dim: int = 64, **kwargs: Any) -> None:
+    def __init__(
+        self, num_heads: int = 4, key_dim: int = 16, ff_dim: int = 64, **kwargs: Any
+    ) -> None:
         super().__init__(num_heads=num_heads, key_dim=key_dim, ff_dim=ff_dim, **kwargs)
         self.num_heads = num_heads
         self.key_dim = key_dim
@@ -324,6 +335,5 @@ class TransformerForecaster(SequenceForecaster):
 
 
 DEEP_MODELS = {
-    m.name: m
-    for m in (LSTMForecaster, GRUForecaster, TCNForecaster, TransformerForecaster)
+    m.name: m for m in (LSTMForecaster, GRUForecaster, TCNForecaster, TransformerForecaster)
 }

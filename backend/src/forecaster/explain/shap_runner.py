@@ -94,7 +94,11 @@ def explain_model(
     if not model.is_fitted:
         return ShapExplanation(error="model is not fitted")
 
-    matrix = X.to_numpy(dtype="float64") if isinstance(X, pd.DataFrame) else np.asarray(X, dtype="float64")
+    matrix = (
+        X.to_numpy(dtype="float64")
+        if isinstance(X, pd.DataFrame)
+        else np.asarray(X, dtype="float64")
+    )
     matrix = np.nan_to_num(matrix, nan=0.0, posinf=0.0, neginf=0.0)
     if len(matrix) > max_rows:
         matrix = matrix[-max_rows:]
@@ -185,9 +189,7 @@ def _permutation_importance(
         return ShapExplanation(error=str(exc))
 
 
-def _summarise(
-    values: np.ndarray, base: float, names: list[str], method: str
-) -> ShapExplanation:
+def _summarise(values: np.ndarray, base: float, names: list[str], method: str) -> ShapExplanation:
     if values.ndim != 2 or values.shape[1] != len(names):
         return ShapExplanation(error=f"unexpected SHAP shape {values.shape}")
 

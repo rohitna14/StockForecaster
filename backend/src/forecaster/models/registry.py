@@ -167,8 +167,16 @@ def model_set(name: str) -> list[str]:
         "linear": available_models(family="linear"),
         "trees": available_models(family="tree"),
         "classical": available_models(family="classical"),
-        "standard": ["ridge", "elastic_net", "huber", "random_forest",
-                     "gradient_boosting", "lightgbm", "xgboost", "catboost"],
+        "standard": [
+            "ridge",
+            "elastic_net",
+            "huber",
+            "random_forest",
+            "gradient_boosting",
+            "lightgbm",
+            "xgboost",
+            "catboost",
+        ],
         "deep": ["lstm", "gru", "tcn", "transformer"],
         "all": [n for n in available_models() if n not in _LAZY],
     }

@@ -79,13 +79,9 @@ async def run_backtest(request: BacktestRequest, ohlcv: OHLCVRepoDep) -> Backtes
     )
 
     result = await asyncio.to_thread(
-        lambda: Backtester(backtest_config).run(
-            frame["close"], predictions, opens=frame["open"]
-        )
+        lambda: Backtester(backtest_config).run(frame["close"], predictions, opens=frame["open"])
     )
-    sweep = await asyncio.to_thread(
-        lambda: sweep_costs(frame["close"], predictions, frame["open"])
-    )
+    sweep = await asyncio.to_thread(lambda: sweep_costs(frame["close"], predictions, frame["open"]))
 
     equity_curve = [
         EquityPoint(

@@ -71,9 +71,7 @@ def feature(
 
 def get_spec(name: str) -> FeatureSpec:
     if name not in _REGISTRY:
-        raise UnknownFeatureError(
-            f"Unknown feature {name!r}", available=sorted(_REGISTRY)[:20]
-        )
+        raise UnknownFeatureError(f"Unknown feature {name!r}", available=sorted(_REGISTRY)[:20])
     return _REGISTRY[name]
 
 
@@ -99,9 +97,7 @@ def required_history(names: list[str]) -> int:
     return max((get_spec(n).min_history for n in names), default=0)
 
 
-def build(
-    frame: pd.DataFrame, names: list[str], *, drop_na: bool = False
-) -> pd.DataFrame:
+def build(frame: pd.DataFrame, names: list[str], *, drop_na: bool = False) -> pd.DataFrame:
     """Materialise the named features from an OHLCV frame.
 
     Args:

@@ -50,9 +50,7 @@ def stochastic(
     return pd.DataFrame({f"stoch_k_{k_period}": k, f"stoch_d_{d_period}": d})
 
 
-def williams_r(
-    high: pd.Series, low: pd.Series, close: pd.Series, period: int = 14
-) -> pd.Series:
+def williams_r(high: pd.Series, low: pd.Series, close: pd.Series, period: int = 14) -> pd.Series:
     """Williams %R -- an inverted stochastic, ranging [-100, 0]."""
     highest = high.rolling(period, min_periods=period).max()
     lowest = low.rolling(period, min_periods=period).min()
@@ -60,9 +58,7 @@ def williams_r(
     return (-100.0 * (highest - close) / span).rename(f"williams_r_{period}")
 
 
-def cci(
-    high: pd.Series, low: pd.Series, close: pd.Series, period: int = 20
-) -> pd.Series:
+def cci(high: pd.Series, low: pd.Series, close: pd.Series, period: int = 20) -> pd.Series:
     """Commodity Channel Index.
 
     Uses mean absolute deviation (Lambert's original definition), not standard
@@ -90,9 +86,7 @@ def tsi(close: pd.Series, long: int = 25, short: int = 13) -> pd.Series:
     """True Strength Index -- double-smoothed momentum."""
     diff = close.diff()
     smooth = diff.ewm(span=long, adjust=False).mean().ewm(span=short, adjust=False).mean()
-    abs_smooth = (
-        diff.abs().ewm(span=long, adjust=False).mean().ewm(span=short, adjust=False).mean()
-    )
+    abs_smooth = diff.abs().ewm(span=long, adjust=False).mean().ewm(span=short, adjust=False).mean()
     return (100.0 * smooth / abs_smooth.replace(0.0, np.nan)).rename("tsi")
 
 

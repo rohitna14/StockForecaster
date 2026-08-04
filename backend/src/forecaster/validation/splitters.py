@@ -34,7 +34,7 @@ from __future__ import annotations
 
 import datetime as dt
 from collections.abc import Iterator
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
 
@@ -133,8 +133,8 @@ class WalkForwardSplit:
         max_folds: cap for quick experiments.
     """
 
-    train_size: int = 756          # ~3 years of daily bars
-    test_size: int = 63            # ~1 quarter
+    train_size: int = 756  # ~3 years of daily bars
+    test_size: int = 63  # ~1 quarter
     step: int | None = None
     horizon: int = 1
     embargo: int = 0
@@ -177,7 +177,9 @@ class WalkForwardSplit:
             test_stop = test_start + self.test_size
             # Purge: training stops `gap` bars before the test window opens.
             train_stop = test_start - self.gap
-            train_start = 0 if self.mode is SplitMode.ANCHORED else max(0, train_stop - self.train_size)
+            train_start = (
+                0 if self.mode is SplitMode.ANCHORED else max(0, train_stop - self.train_size)
+            )
 
             if train_stop - train_start >= self.min_train_size:
                 yield train_start, train_stop, test_start, test_stop
@@ -185,9 +187,7 @@ class WalkForwardSplit:
 
             test_start += self.effective_step
 
-    def split(
-        self, data: pd.DataFrame | pd.Series | np.ndarray | int
-    ) -> list[Fold]:
+    def split(self, data: pd.DataFrame | pd.Series | np.ndarray | int) -> list[Fold]:
         """Produce the folds for a dataset.
 
         Accepts a frame/series (dates are recorded on each fold), a numpy array,
@@ -208,8 +208,10 @@ class WalkForwardSplit:
             test_idx = np.arange(te0, te1)
 
             dates: dict[str, dt.date | None] = {
-                "train_start": None, "train_end": None,
-                "test_start": None, "test_end": None,
+                "train_start": None,
+                "train_end": None,
+                "test_start": None,
+                "test_end": None,
             }
             if index is not None and len(index):
                 dates = {
@@ -299,7 +301,10 @@ class PurgedKFold:
                 continue
 
             dates: dict[str, dt.date | None] = {
-                "train_start": None, "train_end": None, "test_start": None, "test_end": None
+                "train_start": None,
+                "train_end": None,
+                "test_start": None,
+                "test_end": None,
             }
             if index is not None and len(index):
                 dates = {
@@ -310,8 +315,13 @@ class PurgedKFold:
                 }
 
             folds.append(
-                Fold(index=i, train_idx=train_idx, test_idx=test_idx,
-                     purged=self.horizon + embargo, **dates)
+                Fold(
+                    index=i,
+                    train_idx=train_idx,
+                    test_idx=test_idx,
+                    purged=self.horizon + embargo,
+                    **dates,
+                )
             )
 
         if not folds:

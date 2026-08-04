@@ -1,0 +1,41 @@
+name: Nightly EOD ingest
+
+# Free for public repositories. Runs after the US close, refreshes the hot
+# universe, and backfills y_true on predictions whose target bar has now
+# occurred -- which is what turns the predictions table into a genuine live
+# out-of-sample track record rather than another backtest.
+on:
+  schedule:
+    - cron: "30 22 * * 1-5"   # 22:30 UTC ~= 17:30 ET, after the close
+  workflow_dispatch:
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[data,ml]"
+
+      - name: Ingest EOD bars
+        working-directory: backend
+        env:
+          FORECASTER_DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          FORECASTER_TIINGO_API_KEY: ${{ secrets.TIINGO_API_KEY }}
+          FORECASTER_LOG_FORMAT: json
+        run: |
+          python -m forecaster.cli ingest --universe demo --hot --years 1
+          python -m forecaster.cli status
+
+      - name: Report
+        if: failure()
+        run: echo "::warning::Nightly ingest failed -- check provider quotas and circuit breakers."

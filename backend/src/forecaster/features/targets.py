@@ -119,9 +119,7 @@ def forward_vol_ratio(close: pd.Series, horizon: int = 5) -> pd.Series:
     # Shift(-horizon) turns the trailing window into the forward window.
     forward = trailing.shift(-horizon)
 
-    ratio = np.log(
-        forward.replace(0.0, np.nan) / trailing.replace(0.0, np.nan)
-    )
+    ratio = np.log(forward.replace(0.0, np.nan) / trailing.replace(0.0, np.nan))
     return ratio.rename(f"fwd_vol_ratio_{horizon}")
 
 

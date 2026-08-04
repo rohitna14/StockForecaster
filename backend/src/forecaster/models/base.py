@@ -76,7 +76,9 @@ class Forecaster(abc.ABC):
     def _predict(self, X: np.ndarray, context: ModelContext | None) -> np.ndarray: ...
 
     def fit(
-        self, X: np.ndarray | pd.DataFrame, y: np.ndarray | pd.Series,
+        self,
+        X: np.ndarray | pd.DataFrame,
+        y: np.ndarray | pd.Series,
         context: ModelContext | None = None,
     ) -> Self:
         X_arr = _to_array(X)

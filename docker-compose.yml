@@ -1,0 +1,78 @@
+# Full stack in one command:  docker compose up
+#
+# Brings up Postgres, Redis, the API, the Next.js frontend and the Streamlit
+# client. Local development does not require any of this -- the app runs on
+# SQLite with `forecaster db init` -- but a reviewer with Docker can have the
+# production topology running in about a minute, which is the highest-ROI thing
+# in the whole repository.
+
+name: stockforecaster
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: forecaster
+      POSTGRES_PASSWORD: forecaster
+      POSTGRES_DB: forecaster
+    ports: ["5432:5432"]
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U forecaster"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --save "" --appendonly no
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    environment:
+      FORECASTER_ENVIRONMENT: staging
+      FORECASTER_DATABASE_URL: postgresql+asyncpg://forecaster:forecaster@postgres:5432/forecaster
+      FORECASTER_REDIS_URL: redis://redis:6379/0
+      FORECASTER_LOG_FORMAT: json
+      FORECASTER_API_CORS_ORIGINS: http://localhost:3000,http://localhost:8501
+      FORECASTER_LAKE_ROOT: /data/lake
+      FORECASTER_ARTIFACT_ROOT: /data/artifacts
+    ports: ["8000:8000"]
+    volumes:
+      - lake_data:/data
+
+  web:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    depends_on: [api]
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000/api/v1
+    ports: ["3000:3000"]
+
+  streamlit:
+    build:
+      context: .
+      dockerfile: streamlit_app/Dockerfile
+    depends_on: [api]
+    environment:
+      # Server-side call, so it uses the compose network name rather than
+      # localhost -- unlike the Next.js client, which fetches from the browser.
+      FORECASTER_API_URL: http://api:8000/api/v1
+    ports: ["8501:8501"]
+
+volumes:
+  postgres_data:
+  lake_data:

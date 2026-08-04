@@ -92,9 +92,7 @@ def test_costs_reduce_returns_monotonically(price_series: pd.Series) -> None:
 
     ordered = sweep.sort_values("round_trip_bps")
     returns = ordered["total_return"].to_numpy()
-    assert np.all(np.diff(returns) <= 1e-9), (
-        f"Returns must fall as costs rise, got {returns}"
-    )
+    assert np.all(np.diff(returns) <= 1e-9), f"Returns must fall as costs rise, got {returns}"
 
 
 def test_costs_charged_on_turnover_not_per_bar(price_series: pd.Series) -> None:
@@ -118,8 +116,13 @@ def test_costs_charged_on_turnover_not_per_bar(price_series: pd.Series) -> None:
 
 
 def test_short_positions_pay_borrow() -> None:
-    model = CostModel(commission_bps=0, half_spread_bps=0, slippage_bps=0,
-                      slippage_vol_coefficient=0, short_borrow_bps_annual=100.0)
+    model = CostModel(
+        commission_bps=0,
+        half_spread_bps=0,
+        slippage_bps=0,
+        slippage_vol_coefficient=0,
+        short_borrow_bps_annual=100.0,
+    )
     long_only = model.apply(np.ones(252))
     short_only = model.apply(-np.ones(252))
 
@@ -159,7 +162,8 @@ def test_long_only_never_shorts(price_series: pd.Series) -> None:
 def test_leverage_is_capped(price_series: pd.Series) -> None:
     predictions = pd.Series(1.0, index=price_series.index)
     config = BacktestConfig(
-        sizing=SizingMode.VOL_TARGET, max_leverage=1.0,
+        sizing=SizingMode.VOL_TARGET,
+        max_leverage=1.0,
         target_volatility=10.0,  # absurd target that would demand huge leverage
         costs=COST_PRESETS["zero"],
     )

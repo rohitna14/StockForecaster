@@ -47,7 +47,9 @@ class ProviderRouter:
 
     def __init__(self, providers: list[PriceProvider] | None = None) -> None:
         settings = get_settings()
-        self.providers: list[PriceProvider] = providers if providers is not None else _default_providers()
+        self.providers: list[PriceProvider] = (
+            providers if providers is not None else _default_providers()
+        )
         self._buckets: dict[str, TokenBucket] = {
             p.name: TokenBucket(p.capabilities.requests_per_minute) for p in self.providers
         }
@@ -63,9 +65,7 @@ class ProviderRouter:
     @property
     def available_providers(self) -> list[PriceProvider]:
         return [
-            p
-            for p in self.providers
-            if p.is_configured() and self._breakers[p.name].is_available
+            p for p in self.providers if p.is_configured() and self._breakers[p.name].is_available
         ]
 
     async def fetch_daily(

@@ -36,8 +36,18 @@ LEGACY_DB_PATH = REPO_ROOT / "data" / "legacy" / "stocks.db"
 
 #: Small, liquid, sector-diverse set used for demos, tests and CI.
 DEMO_SYMBOLS = [
-    "AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "META", "TSLA",
-    "JPM", "XOM", "JNJ", "WMT", "SPY",
+    "AAPL",
+    "MSFT",
+    "NVDA",
+    "GOOGL",
+    "AMZN",
+    "META",
+    "TSLA",
+    "JPM",
+    "XOM",
+    "JNJ",
+    "WMT",
+    "SPY",
 ]
 
 _MONEY_RE = re.compile(r"[^0-9.\-]")
@@ -71,8 +81,13 @@ def _clean_name(raw: Any, symbol: str) -> str:
     """Strip the boilerplate share-class suffixes NASDAQ appends to every name."""
     name = str(raw or symbol).strip()
     for suffix in (
-        " Common Stock", " Common Shares", " Ordinary Shares", " Class A Ordinary Shares",
-        " Class B Ordinary Shares", " Common Stock (", " American Depositary Shares",
+        " Common Stock",
+        " Common Shares",
+        " Ordinary Shares",
+        " Class A Ordinary Shares",
+        " Class B Ordinary Shares",
+        " Common Stock (",
+        " American Depositary Shares",
     ):
         if suffix in name:
             name = name.split(suffix)[0].strip()
@@ -89,9 +104,9 @@ def read_legacy_instruments(path: Path | None = None) -> pd.DataFrame:
     with sqlite3.connect(path) as conn:
         # The original code did `SELECT ... FROM {tables[0][0]}` -- the first
         # table in arbitrary order. Name the table explicitly instead.
-        tables = pd.read_sql_query(
-            "SELECT name FROM sqlite_master WHERE type='table'", conn
-        )["name"].tolist()
+        tables = pd.read_sql_query("SELECT name FROM sqlite_master WHERE type='table'", conn)[
+            "name"
+        ].tolist()
         if "stocks" not in tables:
             log.warning("legacy_table_missing", found=tables)
             return pd.DataFrame()
@@ -113,9 +128,15 @@ def read_legacy_instruments(path: Path | None = None) -> pd.DataFrame:
                 "symbol": symbol,
                 "name": _clean_name(row.get("Name"), symbol),
                 "asset_type": "equity",
-                "sector": (str(row["Sector"]).strip() or None) if pd.notna(row.get("Sector")) else None,
-                "industry": (str(row["Industry"]).strip() or None) if pd.notna(row.get("Industry")) else None,
-                "country": (str(row["Country"]).strip() or None) if pd.notna(row.get("Country")) else None,
+                "sector": (str(row["Sector"]).strip() or None)
+                if pd.notna(row.get("Sector"))
+                else None,
+                "industry": (str(row["Industry"]).strip() or None)
+                if pd.notna(row.get("Industry"))
+                else None,
+                "country": (str(row["Country"]).strip() or None)
+                if pd.notna(row.get("Country"))
+                else None,
                 "currency": "USD",
                 "market_cap": float(market_cap) if pd.notna(market_cap) and market_cap else None,
                 "ipo_year": int(row["IPO Year"]) if pd.notna(row.get("IPO Year")) else None,
@@ -175,8 +196,12 @@ def fetch_sp500_constituents() -> pd.DataFrame:
     try:
         frame = pd.read_csv(io.StringIO(_http_get(SP500_CSV_URL).text))
         frame = frame.rename(
-            columns={"Symbol": "symbol", "Security": "name", "GICS Sector": "sector",
-                     "GICS Sub-Industry": "industry"}
+            columns={
+                "Symbol": "symbol",
+                "Security": "name",
+                "GICS Sector": "sector",
+                "GICS Sub-Industry": "industry",
+            }
         )
         frame["symbol"] = (
             frame["symbol"].astype(str).str.strip().str.upper().str.replace(".", "-", regex=False)
@@ -197,7 +222,9 @@ def fetch_sp500_constituents() -> pd.DataFrame:
     table = tables[0].rename(
         columns={"Security": "name", "GICS Sector": "sector", "GICS Sub-Industry": "industry"}
     )
-    table["symbol"] = table["Symbol"].astype(str).str.strip().str.upper().str.replace(".", "-", regex=False)
+    table["symbol"] = (
+        table["Symbol"].astype(str).str.strip().str.upper().str.replace(".", "-", regex=False)
+    )
     log.info("sp500_loaded", source="wikipedia", count=len(table))
     return table[["symbol", "name", "sector", "industry"]]
 
@@ -206,16 +233,106 @@ def fetch_sp500_constituents() -> pd.DataFrame:
 #: The index reconstitutes annually in December; refresh with `forecaster seed`
 #: when the network path works, or edit this list.
 NASDAQ100_FALLBACK = [
-    "AAPL", "ABNB", "ADBE", "ADI", "ADP", "ADSK", "AEP", "AMAT", "AMD", "AMGN",
-    "AMZN", "ANSS", "APP", "ARM", "ASML", "AVGO", "AXON", "AZN", "BIIB", "BKNG",
-    "BKR", "CCEP", "CDNS", "CDW", "CEG", "CHTR", "CMCSA", "COST", "CPRT", "CRWD",
-    "CSCO", "CSGP", "CSX", "CTAS", "CTSH", "DASH", "DDOG", "DXCM", "EA", "EXC",
-    "FANG", "FAST", "FTNT", "GEHC", "GFS", "GILD", "GOOG", "GOOGL", "HON", "IDXX",
-    "INTC", "INTU", "ISRG", "KDP", "KHC", "KLAC", "LIN", "LRCX", "LULU", "MAR",
-    "MCHP", "MDB", "MDLZ", "MELI", "META", "MNST", "MRVL", "MSFT", "MU", "NFLX",
-    "NVDA", "NXPI", "ODFL", "ON", "ORLY", "PANW", "PAYX", "PCAR", "PDD", "PEP",
-    "PLTR", "PYPL", "QCOM", "REGN", "ROP", "ROST", "SBUX", "SNPS", "TEAM", "TMUS",
-    "TSLA", "TTD", "TTWO", "TXN", "VRSK", "VRTX", "WBD", "WDAY", "XEL", "ZS",
+    "AAPL",
+    "ABNB",
+    "ADBE",
+    "ADI",
+    "ADP",
+    "ADSK",
+    "AEP",
+    "AMAT",
+    "AMD",
+    "AMGN",
+    "AMZN",
+    "ANSS",
+    "APP",
+    "ARM",
+    "ASML",
+    "AVGO",
+    "AXON",
+    "AZN",
+    "BIIB",
+    "BKNG",
+    "BKR",
+    "CCEP",
+    "CDNS",
+    "CDW",
+    "CEG",
+    "CHTR",
+    "CMCSA",
+    "COST",
+    "CPRT",
+    "CRWD",
+    "CSCO",
+    "CSGP",
+    "CSX",
+    "CTAS",
+    "CTSH",
+    "DASH",
+    "DDOG",
+    "DXCM",
+    "EA",
+    "EXC",
+    "FANG",
+    "FAST",
+    "FTNT",
+    "GEHC",
+    "GFS",
+    "GILD",
+    "GOOG",
+    "GOOGL",
+    "HON",
+    "IDXX",
+    "INTC",
+    "INTU",
+    "ISRG",
+    "KDP",
+    "KHC",
+    "KLAC",
+    "LIN",
+    "LRCX",
+    "LULU",
+    "MAR",
+    "MCHP",
+    "MDB",
+    "MDLZ",
+    "MELI",
+    "META",
+    "MNST",
+    "MRVL",
+    "MSFT",
+    "MU",
+    "NFLX",
+    "NVDA",
+    "NXPI",
+    "ODFL",
+    "ON",
+    "ORLY",
+    "PANW",
+    "PAYX",
+    "PCAR",
+    "PDD",
+    "PEP",
+    "PLTR",
+    "PYPL",
+    "QCOM",
+    "REGN",
+    "ROP",
+    "ROST",
+    "SBUX",
+    "SNPS",
+    "TEAM",
+    "TMUS",
+    "TSLA",
+    "TTD",
+    "TTWO",
+    "TXN",
+    "VRSK",
+    "VRTX",
+    "WBD",
+    "WDAY",
+    "XEL",
+    "ZS",
 ]
 
 
@@ -265,15 +382,25 @@ async def seed_universe(
         if missing and create_missing:
             await repo.upsert_many(
                 [
-                    {"symbol": s, "name": s, "asset_type": "unknown", "currency": "USD", "is_active": True}
+                    {
+                        "symbol": s,
+                        "name": s,
+                        "asset_type": "unknown",
+                        "currency": "USD",
+                        "is_active": True,
+                    }
                     for s in missing
                 ]
             )
             await session.flush()
             found = await repo.get_by_symbols(symbols)
-            log.info("universe_stubs_created", universe=name, count=len(missing), symbols=missing[:10])
+            log.info(
+                "universe_stubs_created", universe=name, count=len(missing), symbols=missing[:10]
+            )
         elif missing:
-            log.warning("universe_symbols_missing", universe=name, count=len(missing), sample=missing[:10])
+            log.warning(
+                "universe_symbols_missing", universe=name, count=len(missing), sample=missing[:10]
+            )
 
         await session.execute(
             delete(UniverseMember).where(UniverseMember.universe_id == existing.id)
@@ -281,9 +408,7 @@ async def seed_universe(
         today = pd.Timestamp.today().date()
         for instrument in found.values():
             session.add(
-                UniverseMember(
-                    universe_id=existing.id, instrument_id=instrument.id, added_at=today
-                )
+                UniverseMember(universe_id=existing.id, instrument_id=instrument.id, added_at=today)
             )
         log.info("universe_seeded", universe=name, members=len(found))
         return len(found)
@@ -301,7 +426,9 @@ async def seed_all(*, include_index_universes: bool = True) -> dict[str, int]:
             async with session_scope() as session:
                 # Index members may not appear in the legacy screener dump.
                 await InstrumentRepository(session).upsert_many(
-                    sp500.assign(currency="USD", asset_type="equity", is_active=True).to_dict("records")
+                    sp500.assign(currency="USD", asset_type="equity", is_active=True).to_dict(
+                        "records"
+                    )
                 )
             results["sp500"] = await seed_universe(
                 "sp500", sp500["symbol"].tolist(), "S&P 500 constituents"

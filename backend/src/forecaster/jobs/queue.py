@@ -166,7 +166,8 @@ class JobQueue:
     def _evict_expired(self) -> None:
         cutoff = time.time() - JOB_TTL_SECONDS
         stale = [
-            jid for jid, job in self._jobs.items()
+            jid
+            for jid, job in self._jobs.items()
             if job.is_terminal and (job.finished_at or job.created_at) < cutoff
         ]
         for jid in stale:

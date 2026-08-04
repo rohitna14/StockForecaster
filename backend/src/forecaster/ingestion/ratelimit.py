@@ -70,8 +70,8 @@ class TokenBucket:
 
 
 class BreakerState(StrEnum):
-    CLOSED = "closed"      # healthy, requests flow
-    OPEN = "open"          # failing, requests short-circuit
+    CLOSED = "closed"  # healthy, requests flow
+    OPEN = "open"  # failing, requests short-circuit
     HALF_OPEN = "half_open"  # cooldown elapsed, probing with one request
 
 

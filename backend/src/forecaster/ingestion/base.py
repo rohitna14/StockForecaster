@@ -53,9 +53,7 @@ class PriceProvider(abc.ABC):
     capabilities: ProviderCapabilities = ProviderCapabilities()
 
     @abc.abstractmethod
-    async def fetch_daily(
-        self, symbol: str, start: dt.date, end: dt.date
-    ) -> pd.DataFrame:
+    async def fetch_daily(self, symbol: str, start: dt.date, end: dt.date) -> pd.DataFrame:
         """Return normalised daily bars in ``[start, end]``.
 
         Implementations should raise :class:`~forecaster.exceptions.ProviderError`

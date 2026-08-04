@@ -87,15 +87,21 @@ async def get_ohlcv(
     bars = [
         Bar(
             ts=ts.date() if hasattr(ts, "date") else ts,
-            open=float(row["open"]), high=float(row["high"]), low=float(row["low"]),
-            close=float(row["close"]), adj_close=float(row["adj_close"]),
+            open=float(row["open"]),
+            high=float(row["high"]),
+            low=float(row["low"]),
+            close=float(row["close"]),
+            adj_close=float(row["adj_close"]),
             volume=int(row["volume"]),
         )
         for ts, row in frame.iterrows()
     ]
     return OHLCVResponse(
-        symbol=symbol.upper(), adjusted=adjusted, source_tier=tier,
-        bars=bars, count=len(bars),
+        symbol=symbol.upper(),
+        adjusted=adjusted,
+        source_tier=tier,
+        bars=bars,
+        count=len(bars),
     )
 
 

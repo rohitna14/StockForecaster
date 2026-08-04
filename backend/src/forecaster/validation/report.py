@@ -117,9 +117,9 @@ unchanged". Skill is the fractional reduction in RMSE against it.
 
     if best is not None:
         parts.append(
-            f"""**{best['model']} reduces RMSE by {_pct(best['rmse_skill_pct'])} versus a random-walk
-baseline when forecasting {int(best['horizon'])}-day realised volatility**, pooled across
-{len(symbols)} symbols (R-squared {_fmt(best.get('r2'), '.3f')}, MASE {_fmt(best.get('mase'), '.3f')}).
+            f"""**{best["model"]} reduces RMSE by {_pct(best["rmse_skill_pct"])} versus a random-walk
+baseline when forecasting {int(best["horizon"])}-day realised volatility**, pooled across
+{len(symbols)} symbols (R-squared {_fmt(best.get("r2"), ".3f")}, MASE {_fmt(best.get("mase"), ".3f")}).
 
 This is the number that belongs on a resume, and the reason it is defensible:
 
@@ -152,8 +152,8 @@ publishes its wins is not evidence of anything.
     if best_dir is not None:
         parts.append(
             f"""The best-performing non-baseline model on the return target was
-`{best_dir['model']}` at horizon {int(best_dir['horizon'])}, with an RMSE skill of
-{_pct(best_dir['rmse_skill_pct'])} -- that is, **worse than predicting zero**.
+`{best_dir["model"]}` at horizon {int(best_dir["horizon"])}, with an RMSE skill of
+{_pct(best_dir["rmse_skill_pct"])} -- that is, **worse than predicting zero**.
 Directional hit rates sat consistently *below* the base rate, meaning the models
 were less accurate than a rule that says "up" every day.
 
@@ -351,9 +351,7 @@ def pool_results(rows: pd.DataFrame) -> pd.DataFrame:
         "dm_p": "median",
     }
     available = {k: v for k, v in agg_map.items() if k in rows.columns}
-    pooled = rows.groupby(["horizon", "model"]).agg(**{
-        k: (k, v) for k, v in available.items()
-    })
+    pooled = rows.groupby(["horizon", "model"]).agg(**{k: (k, v) for k, v in available.items()})
     pooled["n"] = rows.groupby(["horizon", "model"])["symbol"].count()
     return pooled.reset_index()
 

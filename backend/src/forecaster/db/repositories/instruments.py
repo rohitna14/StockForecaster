@@ -96,8 +96,16 @@ class InstrumentRepository(Repository):
             normalised,
             conflict_cols=["symbol"],
             update_cols=[
-                "name", "exchange", "asset_type", "sector", "industry",
-                "country", "currency", "market_cap", "ipo_year", "is_active",
+                "name",
+                "exchange",
+                "asset_type",
+                "sector",
+                "industry",
+                "country",
+                "currency",
+                "market_cap",
+                "ipo_year",
+                "is_active",
             ],
         )
 

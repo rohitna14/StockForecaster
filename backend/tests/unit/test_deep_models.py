@@ -58,9 +58,7 @@ def test_lstm_has_recurrent_weights(training_data) -> None:
     model = LSTMForecaster(lookback=20, epochs=2, patience=1)
     model.fit(X, y)
 
-    lstm_layers = [
-        layer for layer in model._model.layers if "lstm" in type(layer).__name__.lower()
-    ]
+    lstm_layers = [layer for layer in model._model.layers if "lstm" in type(layer).__name__.lower()]
     assert lstm_layers, "no LSTM layer found"
 
     recurrent = [w for w in lstm_layers[0].weights if "recurrent" in w.name]
@@ -103,9 +101,12 @@ def test_prediction_is_causal(model_cls, training_data) -> None:
     # Row i uses window [i-lookback+1, i], so rows < 60 are unaffected only
     # from index lookback-1 onward (earlier rows are warm-up fill).
     np.testing.assert_allclose(
-        baseline[19:60], perturbed[19:60], rtol=1e-4, atol=1e-5,
+        baseline[19:60],
+        perturbed[19:60],
+        rtol=1e-4,
+        atol=1e-5,
         err_msg=f"{model_cls.name} is not causal: past predictions moved when "
-                f"future inputs changed",
+        f"future inputs changed",
     )
 
 
@@ -164,9 +165,12 @@ def test_transformer_positional_encoding_is_trainable(training_data) -> None:
     # And confirm they genuinely move during training rather than sitting at init.
     X, y = training_data
     fitted = TransformerForecaster(lookback=20, epochs=6, patience=5)
-    initial = fitted._build_network(20, X.shape[1]).get_layer(
-        "positional_embedding"
-    ).get_weights()[0].copy()
+    initial = (
+        fitted._build_network(20, X.shape[1])
+        .get_layer("positional_embedding")
+        .get_weights()[0]
+        .copy()
+    )
 
     fitted.fit(X[:300], y[:300])
     trained = fitted._model.get_layer("positional_embedding").get_weights()[0]

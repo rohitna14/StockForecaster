@@ -178,6 +178,4 @@ class ETSForecaster(ClassicalForecaster):
         return ETSModel(pd.Series(endog), error="add", trend=None, seasonal=None)
 
 
-CLASSICAL_MODELS = {
-    m.name: m for m in (ARIMAForecaster, SARIMAForecaster, ETSForecaster)
-}
+CLASSICAL_MODELS = {m.name: m for m in (ARIMAForecaster, SARIMAForecaster, ETSForecaster)}

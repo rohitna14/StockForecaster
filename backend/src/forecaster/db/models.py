@@ -114,9 +114,7 @@ class Instrument(Base):
     last_date: Mapped[dt.date | None] = mapped_column(Date)
 
     created_at: Mapped[dt.datetime] = mapped_column(server_default=func.now())
-    updated_at: Mapped[dt.datetime] = mapped_column(
-        server_default=func.now(), onupdate=func.now()
-    )
+    updated_at: Mapped[dt.datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
 
     bars: Mapped[list[OHLCVDaily]] = relationship(
         back_populates="instrument", cascade="all, delete-orphan", passive_deletes=True

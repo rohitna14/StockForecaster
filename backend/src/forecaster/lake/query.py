@@ -15,7 +15,6 @@ from typing import Any
 import duckdb
 import pandas as pd
 
-from forecaster.config import get_settings
 from forecaster.db.repositories.ohlcv import OHLCV_COLUMNS, apply_adjustment
 from forecaster.lake.writer import ohlcv_root
 from forecaster.logging import get_logger
@@ -119,7 +118,7 @@ def read_panel(
     sql = f"""
         SELECT symbol, ts, {field}
         FROM read_parquet('{_glob(root)}', hive_partitioning=true)
-        WHERE {' AND '.join(clauses)}
+        WHERE {" AND ".join(clauses)}
         ORDER BY ts
     """
     long = get_connection().execute(sql, params).df()

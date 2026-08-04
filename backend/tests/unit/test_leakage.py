@@ -93,9 +93,9 @@ def test_target_is_forward_looking_by_design(ohlcv: pd.DataFrame) -> None:
     original = forward_return(ohlcv["close"], horizon=1).iloc[:cut]
     perturbed = forward_return(corrupted["close"], horizon=1).iloc[:cut]
 
-    assert not np.allclose(
-        original.to_numpy()[-1], perturbed.to_numpy()[-1], equal_nan=True
-    ), "Corruption harness is not sensitive; the causality tests would be vacuous."
+    assert not np.allclose(original.to_numpy()[-1], perturbed.to_numpy()[-1], equal_nan=True), (
+        "Corruption harness is not sensitive; the causality tests would be vacuous."
+    )
 
 
 # ═══════════════════════════ 2. purge correctness ══════════════════════════
@@ -186,9 +186,7 @@ def test_fold_self_check_catches_a_bad_gap() -> None:
 
 
 # ═══════════════════ 3. the strongest guard: shuffled target ═══════════════
-def _fit_predict_ridge(
-    X_train: np.ndarray, y_train: np.ndarray, X_test: np.ndarray
-) -> np.ndarray:
+def _fit_predict_ridge(X_train: np.ndarray, y_train: np.ndarray, X_test: np.ndarray) -> np.ndarray:
     from sklearn.linear_model import Ridge
     from sklearn.preprocessing import StandardScaler
 
@@ -217,9 +215,7 @@ def _run_walk_forward(
         # Destroy the feature/target relationship while preserving the marginal
         # distribution of y exactly.
         rng = np.random.default_rng(seed)
-        target = pd.Series(
-            rng.permutation(target.to_numpy()), index=target.index, name="target"
-        )
+        target = pd.Series(rng.permutation(target.to_numpy()), index=target.index, name="target")
 
     splitter = WalkForwardSplit(train_size=500, test_size=100, horizon=1, embargo=2)
     skills: list[float] = []

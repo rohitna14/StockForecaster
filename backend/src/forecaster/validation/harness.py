@@ -49,16 +49,16 @@ class EvaluationConfig:
     feature_set: str = "core"
 
     # Walk-forward geometry
-    train_size: int = 504          # ~2 years
-    test_size: int = 63            # ~1 quarter
+    train_size: int = 504  # ~2 years
+    test_size: int = 63  # ~1 quarter
     step: int | None = None
     embargo: int = 2
     mode: SplitMode = SplitMode.ROLLING
     max_folds: int | None = None
 
     # Evaluation options
-    cost_bps: float = 5.0          # round-trip cost assumption for strategy metrics
-    conformal_alpha: float = 0.2   # 0.2 -> 80% prediction interval (P10-P90)
+    cost_bps: float = 5.0  # round-trip cost assumption for strategy metrics
+    conformal_alpha: float = 0.2  # 0.2 -> 80% prediction interval (P10-P90)
     random_seed: int = 42
 
     def splitter(self) -> WalkForwardSplit:
@@ -144,8 +144,9 @@ class EvaluationReport:
         rows = []
         for result in self.results.values():
             if not result.succeeded:
-                rows.append({"model": result.model_name, "family": result.family,
-                             "error": result.error})
+                rows.append(
+                    {"model": result.model_name, "family": result.family, "error": result.error}
+                )
                 continue
             agg = result.aggregate
             rows.append(
@@ -260,9 +261,7 @@ class EvaluationHarness:
 
         for position, name in enumerate(model_names):
             with log_context(model=name):
-                result = self._evaluate_model(
-                    name, features, target, close, folds, baseline_preds
-                )
+                result = self._evaluate_model(name, features, target, close, folds, baseline_preds)
             report.results[name] = result
 
             if name == REFERENCE_BASELINE and result.succeeded:
@@ -356,17 +355,22 @@ class EvaluationHarness:
                 yt = np.concatenate(y_true_all)
                 yp = np.concatenate(y_pred_all)
                 yb = np.concatenate(y_base_all)
-                result.skill = {
-                    k: v.as_dict() for k, v in all_skill_scores(yt, yp, yb).items()
-                }
+                result.skill = {k: v.as_dict() for k, v in all_skill_scores(yt, yp, yb).items()}
                 result.dm_test = diebold_mariano(yt, yp, yb, horizon=cfg.horizon).as_dict()
         elif name == REFERENCE_BASELINE:
             result.skill = {
-                "rmse": {"improvement_pct": 0.0, "skill": 0.0, "metric": "rmse",
-                         "baseline": REFERENCE_BASELINE},
-                "directional": {"improvement_pct": 0.0, "skill": 0.0,
-                                "metric": "directional_accuracy",
-                                "baseline": REFERENCE_BASELINE},
+                "rmse": {
+                    "improvement_pct": 0.0,
+                    "skill": 0.0,
+                    "metric": "rmse",
+                    "baseline": REFERENCE_BASELINE,
+                },
+                "directional": {
+                    "improvement_pct": 0.0,
+                    "skill": 0.0,
+                    "metric": "directional_accuracy",
+                    "baseline": REFERENCE_BASELINE,
+                },
             }
 
         result.duration_seconds = time.perf_counter() - started
@@ -439,8 +443,9 @@ class EvaluationHarness:
         y_lower = y_upper = None
         coverage = float("nan")
         if use_conformal and calib_slice is not None:
-            calib_pred = model.predict(_prep(X_train_raw[calib_slice]),
-                                       ModelContext(horizon=cfg.horizon))
+            calib_pred = model.predict(
+                _prep(X_train_raw[calib_slice]), ModelContext(horizon=cfg.horizon)
+            )
             residuals = np.abs(y_train[calib_slice] - calib_pred)
             residuals = residuals[np.isfinite(residuals)]
             if len(residuals) >= 20:
@@ -452,13 +457,9 @@ class EvaluationHarness:
                 inside = (y_test >= y_lower) & (y_test <= y_upper)
                 coverage = float(np.mean(inside[np.isfinite(y_test)]))
 
-        fold_metrics = M.compute_all(
-            y_test, y_pred, probabilities=proba, cost_bps=cfg.cost_bps
-        )
-        if REFERENCE_BASELINE != model_name:
-            fold_metrics.skill_vs_naive = rmse_skill(
-                y_test, y_pred, np.zeros_like(y_pred)
-            ).skill
+        fold_metrics = M.compute_all(y_test, y_pred, probabilities=proba, cost_bps=cfg.cost_bps)
+        if model_name != REFERENCE_BASELINE:
+            fold_metrics.skill_vs_naive = rmse_skill(y_test, y_pred, np.zeros_like(y_pred)).skill
 
         fold_result = FoldResult(
             fold_index=fold.index,
@@ -513,8 +514,7 @@ def select_model_honestly(report: EvaluationReport, metric: str = "rmse") -> str
     Returns the selected model name.
     """
     candidates = {
-        name: res for name, res in report.results.items()
-        if res.succeeded and len(res.folds) >= 2
+        name: res for name, res in report.results.items() if res.succeeded and len(res.folds) >= 2
     }
     if not candidates:
         return REFERENCE_BASELINE
@@ -530,11 +530,15 @@ def select_model_honestly(report: EvaluationReport, metric: str = "rmse") -> str
         return REFERENCE_BASELINE
 
     lower_is_better = metric in {"rmse", "mae", "mase", "brier"}
-    return min(scored, key=lambda k: scored[k]) if lower_is_better else max(
-        scored, key=lambda k: scored[k]
+    return (
+        min(scored, key=lambda k: scored[k])
+        if lower_is_better
+        else max(scored, key=lambda k: scored[k])
     )
 
 
-def evaluate_symbol(ohlcv: pd.DataFrame, config: EvaluationConfig, **kwargs: Any) -> EvaluationReport:
+def evaluate_symbol(
+    ohlcv: pd.DataFrame, config: EvaluationConfig, **kwargs: Any
+) -> EvaluationReport:
     """Convenience wrapper."""
     return EvaluationHarness(config).run(ohlcv, **kwargs)

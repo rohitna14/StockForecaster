@@ -11,9 +11,9 @@ import pytest
 
 pytest.importorskip("fastapi", reason="requires the [api] extra")
 
-from fastapi.testclient import TestClient  # noqa: E402
+from fastapi.testclient import TestClient
 
-from forecaster.api.main import create_app  # noqa: E402
+from forecaster.api.main import create_app
 
 
 @pytest.fixture(scope="module")
@@ -73,9 +73,7 @@ def test_glossary_covers_every_headline_metric(client: TestClient) -> None:
     entries = {e["key"] for e in client.get("/api/v1/glossary").json()}
     assert {"rmse", "mase", "r2", "directional_accuracy", "sharpe"} <= entries
 
-    r2_entry = next(
-        e for e in client.get("/api/v1/glossary").json() if e["key"] == "r2"
-    )
+    r2_entry = next(e for e in client.get("/api/v1/glossary").json() if e["key"] == "r2")
     # The R2 caveat is the single most important piece of copy in the product.
     assert r2_entry["caveat"] and "leak" in r2_entry["caveat"].lower()
 
@@ -98,9 +96,7 @@ def test_unknown_symbol_returns_problem_json(client: TestClient) -> None:
 
 
 def test_validation_error_is_problem_json(client: TestClient) -> None:
-    response = client.post(
-        "/api/v1/runs", json={"symbol": "AAPL", "horizon": 9999}
-    )
+    response = client.post("/api/v1/runs", json={"symbol": "AAPL", "horizon": 9999})
     assert response.status_code == 422
     assert response.json()["type"].endswith("validation_error")
 
@@ -181,8 +177,12 @@ def test_evaluation_always_includes_the_baseline(client: TestClient) -> None:
     response = client.post(
         "/api/v1/runs",
         json={
-            "symbol": "AAPL", "models": ["ridge"], "horizon": 5,
-            "target_type": "vol_ratio", "train_size": 300, "test_size": 60,
+            "symbol": "AAPL",
+            "models": ["ridge"],
+            "horizon": 5,
+            "target_type": "vol_ratio",
+            "train_size": 300,
+            "test_size": 60,
         },
     )
     assert response.status_code == 200
