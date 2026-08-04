@@ -109,6 +109,39 @@ export function skillClass(value: number | null | undefined): string {
   return "text-loss";
 }
 
+/**
+ * Deterministic colour per sector.
+ *
+ * Colour carries meaning here rather than decorating: the same sector is always
+ * the same hue across search results, cards and the explore grid, so you learn
+ * to read it. Unknown sectors fall back to neutral slate rather than picking a
+ * random hue, which would imply a grouping that doesn't exist.
+ */
+const SECTOR_COLORS: Record<string, string> = {
+  technology: "#7C5CFF",
+  "information technology": "#7C5CFF",
+  "health care": "#22D3EE",
+  healthcare: "#22D3EE",
+  finance: "#2DD97B",
+  financials: "#2DD97B",
+  energy: "#FB923C",
+  "consumer discretionary": "#E056C1",
+  "consumer staples": "#F472B6",
+  "consumer services": "#E056C1",
+  industrials: "#FBBF24",
+  utilities: "#A3E635",
+  "real estate": "#F472B6",
+  "basic materials": "#38BDF8",
+  materials: "#38BDF8",
+  "telecommunications": "#C084FC",
+  miscellaneous: "#94A3B8",
+};
+
+export function sectorColor(sector: string | null | undefined): string {
+  if (!sector) return "#64748B";
+  return SECTOR_COLORS[sector.trim().toLowerCase()] ?? "#64748B";
+}
+
 export function significanceLabel(p: number | null | undefined): {
   label: string;
   className: string;

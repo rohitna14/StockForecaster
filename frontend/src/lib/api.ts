@@ -19,6 +19,7 @@ import type {
   Page,
   ProblemDetail,
   RiskResponse,
+  SparklineResponse,
 } from "./types";
 
 export const API_URL =
@@ -99,6 +100,14 @@ export const api = {
 
   getRisk: (symbol: string) =>
     request<RiskResponse>(`/instruments/${symbol}/risk`),
+
+  /** Batch mini-charts. One request for a whole card grid. */
+  getSparklines: (symbols: string[], days = 90) =>
+    request<SparklineResponse>("/instruments/sparklines", {
+      params: { symbols: symbols.join(","), days },
+    }),
+
+  getSectors: () => request<string[]>("/instruments/sectors"),
 
   getIndicators: (symbol: string, features: string, limit = 500) =>
     request<{

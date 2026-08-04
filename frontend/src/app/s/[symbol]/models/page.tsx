@@ -5,6 +5,7 @@ import Link from "next/link";
 import { api, ApiError } from "@/lib/api";
 import { Leaderboard } from "@/components/charts/Leaderboard";
 import { Badge, Callout, EmptyState, Skeleton } from "@/components/ui/primitives";
+import { SymbolTabs } from "@/components/SymbolTabs";
 import { cn, fmtNumber } from "@/lib/format";
 import type { EvaluationResponse } from "@/lib/types";
 
@@ -72,25 +73,20 @@ export default function ModelsPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">
-            <span className="tnum font-mono">{symbol}</span> · model comparison
-          </h1>
-          <p className="mt-1 text-sm text-ink-muted">
-            Walk-forward with purged splits. Every run is computed live.
-          </p>
-        </div>
-        <Link
-          href={`/s/${symbol}`}
-          className="text-sm text-ink-muted transition-colors hover:text-ink"
-        >
-          ← Overview
-        </Link>
+      <div>
+        <span className="label">Model comparison</span>
+        <h1 className="mt-1 text-3xl font-black tracking-tight">
+          <span className="tnum font-mono grad-text">{symbol}</span> leaderboard
+        </h1>
+        <p className="mt-2 text-ink-muted">
+          Walk-forward with purged splits. Every run is computed live — nothing cached.
+        </p>
       </div>
 
+      <SymbolTabs symbol={symbol} active="models" />
+
       {/* ── controls ────────────────────────────────────────────────────── */}
-      <div className="card space-y-4 p-4">
+      <div className="glass space-y-5 p-5">
         <div>
           <div className="label mb-2">Target</div>
           <div className="flex flex-wrap gap-2">
@@ -99,12 +95,7 @@ export default function ModelsPage({
                 key={t.id}
                 type="button"
                 onClick={() => setTarget(t.id)}
-                className={cn(
-                  "rounded-lg border px-3 py-1.5 text-sm transition-colors",
-                  target === t.id
-                    ? "border-accent bg-accent/10 text-accent"
-                    : "border-line-strong text-ink-muted hover:border-ink-faint hover:text-ink",
-                )}
+                className={cn("btn-chip", target === t.id && "btn-chip-active")}
               >
                 {t.label}
               </button>
@@ -123,12 +114,7 @@ export default function ModelsPage({
                 key={h}
                 type="button"
                 onClick={() => setHorizon(h)}
-                className={cn(
-                  "tnum rounded-lg border px-3 py-1.5 font-mono text-sm transition-colors",
-                  horizon === h
-                    ? "border-accent bg-accent/10 text-accent"
-                    : "border-line-strong text-ink-muted hover:border-ink-faint hover:text-ink",
-                )}
+                className={cn("btn-chip tnum font-mono", horizon === h && "btn-chip-active")}
               >
                 {h}d
               </button>
@@ -139,9 +125,9 @@ export default function ModelsPage({
 
       {/* ── results ─────────────────────────────────────────────────────── */}
       {loading && (
-        <div className="card space-y-3 p-4">
+        <div className="glass space-y-3 p-5">
           <div className="flex items-center gap-2 text-sm text-ink-muted">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" />
+            <span className="h-2 w-2 animate-pulse rounded-full bg-violet" />
             Running walk-forward evaluation — fitting {MODELS.length + 1} models across
             every fold…
           </div>
@@ -159,7 +145,7 @@ export default function ModelsPage({
             <button
               type="button"
               onClick={() => void run()}
-              className="rounded-lg border border-line-strong px-3 py-1.5 text-sm text-ink-muted hover:text-ink"
+              className="btn-ghost"
             >
               Retry
             </button>

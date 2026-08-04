@@ -4,6 +4,7 @@ import { use, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { api, ApiError } from "@/lib/api";
 import { Badge, Callout, EmptyState, Skeleton, Stat } from "@/components/ui/primitives";
+import { SymbolTabs } from "@/components/SymbolTabs";
 import { cn, fmtNumber, fmtPercent, fmtPrice } from "@/lib/format";
 import type { BacktestResponse } from "@/lib/types";
 
@@ -65,24 +66,19 @@ export default function BacktestPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">
-            <span className="tnum font-mono">{symbol}</span> · backtest
-          </h1>
-          <p className="mt-1 text-sm text-ink-muted">
-            Out-of-sample predictions only, next-bar execution, costs on turnover.
-          </p>
-        </div>
-        <Link
-          href={`/s/${symbol}`}
-          className="text-sm text-ink-muted transition-colors hover:text-ink"
-        >
-          ← Overview
-        </Link>
+      <div>
+        <span className="label">Backtest</span>
+        <h1 className="mt-1 text-3xl font-black tracking-tight">
+          <span className="tnum font-mono grad-text">{symbol}</span> strategy test
+        </h1>
+        <p className="mt-2 text-ink-muted">
+          Out-of-sample predictions only. Next-bar execution, costs charged on turnover.
+        </p>
       </div>
 
-      <div className="card p-4">
+      <SymbolTabs symbol={symbol} active="backtest" />
+
+      <div className="glass p-5">
         <div className="label mb-2">Transaction costs</div>
         <div className="flex flex-wrap gap-2">
           {COST_PRESETS.map((p) => (
@@ -90,12 +86,7 @@ export default function BacktestPage({
               key={p.id}
               type="button"
               onClick={() => setPreset(p.id)}
-              className={cn(
-                "rounded-lg border px-3 py-1.5 text-sm transition-colors",
-                preset === p.id
-                  ? "border-accent bg-accent/10 text-accent"
-                  : "border-line-strong text-ink-muted hover:border-ink-faint hover:text-ink",
-              )}
+              className={cn("btn-chip", preset === p.id && "btn-chip-active")}
             >
               {p.label}
             </button>
@@ -122,7 +113,7 @@ export default function BacktestPage({
             <button
               type="button"
               onClick={() => void run()}
-              className="rounded-lg border border-line-strong px-3 py-1.5 text-sm text-ink-muted hover:text-ink"
+              className="btn-ghost"
             >
               Retry
             </button>
@@ -188,7 +179,7 @@ export default function BacktestPage({
           </div>
 
           {data.cost_sensitivity.length > 0 && (
-            <section className="card p-4">
+            <section className="glass p-5">
               <h2 className="text-sm font-semibold">Cost sensitivity</h2>
               <p className="mt-1 text-xs text-ink-muted">
                 The question that decides whether an edge is real: at what cost

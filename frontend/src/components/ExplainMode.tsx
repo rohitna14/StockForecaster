@@ -78,14 +78,14 @@ export function ExplainToggle() {
       className={cn(
         "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
         enabled
-          ? "border-accent/50 bg-accent/10 text-accent"
+          ? "border-violet/50 bg-violet/10 text-violet"
           : "border-line-strong text-ink-muted hover:border-ink-faint hover:text-ink",
       )}
     >
       <span
         className={cn(
           "h-1.5 w-1.5 rounded-full transition-colors",
-          enabled ? "bg-accent" : "bg-ink-faint",
+          enabled ? "bg-violet" : "bg-ink-faint",
         )}
       />
       Explain mode

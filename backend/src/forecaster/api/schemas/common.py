@@ -6,7 +6,7 @@ import datetime as dt
 import uuid
 from typing import Any, Generic, TypeVar
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 T = TypeVar("T")
 
@@ -49,6 +49,18 @@ class InstrumentSummary(Schema):
     tier: str
     first_date: dt.date | None = None
     last_date: dt.date | None = None
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def has_data(self) -> bool:
+        """Whether this symbol can actually be opened.
+
+        The instruments table holds 6,000+ tickers but only the ingested subset
+        has price history. Surfacing this lets search grey out results that
+        would land on an empty state -- a result you cannot open is worse than
+        one you can.
+        """
+        return self.tier == "hot" or self.first_date is not None
 
 
 class Bar(Schema):

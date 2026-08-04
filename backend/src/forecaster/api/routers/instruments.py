@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import datetime as dt
-from typing import Annotated
+from typing import Annotated, Any
 
 import numpy as np
 import pandas as pd
@@ -25,6 +25,7 @@ from forecaster.api.schemas.common import (
 )
 from forecaster.db.models import Tier
 from forecaster.exceptions import InsufficientDataError, UnknownFeatureError
+from forecaster.lake import query as lake_query
 from forecaster.lake import writer as lake_writer
 
 router = APIRouter(prefix="/instruments", tags=["instruments"])
@@ -56,6 +57,52 @@ async def search_instruments(
 @router.get("/sectors", response_model=list[str])
 async def list_sectors(repo: InstrumentRepoDep) -> list[str]:
     return await repo.sectors()
+
+
+@router.get("/sparklines")
+async def get_sparklines(
+    ohlcv: OHLCVRepoDep,
+    symbols: Annotated[str, Query(description="Comma-separated symbols.")],
+    days: Annotated[int, Query(ge=5, le=750)] = 90,
+) -> dict[str, Any]:
+    """Compact recent-price series for many symbols in one round-trip.
+
+    A grid of ticker cards each fetching its own history would fire a dozen
+    requests on every page load. This returns normalised series (first value =
+    100) so the frontend can draw a shape without knowing the price scale.
+    """
+    wanted = [s.strip().upper() for s in symbols.split(",") if s.strip()][:40]
+    if not wanted:
+        return {"series": {}}
+
+    cutoff = dt.date.today() - dt.timedelta(days=int(days * 1.6))
+    panel = await ohlcv.get_panel(wanted, start=cutoff, field="adj_close")
+
+    out: dict[str, Any] = {}
+    for symbol in wanted:
+        series = None
+        if not panel.empty and symbol in panel.columns:
+            series = panel[symbol].dropna().tail(days)
+        if series is None or len(series) < 2:
+            # Fall back to the cold lake for symbols not promoted to hot.
+            frame = lake_query.read_bars(symbol, start=cutoff)
+            if frame.empty:
+                continue
+            series = frame["close"].tail(days)
+
+        values = series.to_numpy(dtype="float64")
+        base = float(values[0])
+        if base <= 0:
+            continue
+
+        out[symbol] = {
+            "points": [round(float(v) / base * 100.0, 3) for v in values],
+            "change_pct": round(float(values[-1] / base - 1.0), 6),
+            "last": round(float(values[-1]), 4),
+            "n": len(values),
+        }
+
+    return {"series": out, "days": days}
 
 
 @router.get("/{symbol}", response_model=InstrumentSummary)

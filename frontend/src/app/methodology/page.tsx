@@ -66,7 +66,7 @@ export default function MethodologyPage() {
           regimes, not a single number that depends on where you happened to cut.
         </p>
 
-        <pre className="card overflow-x-auto p-4 font-mono text-xs leading-relaxed text-ink-muted">
+        <pre className="glass overflow-x-auto p-4 font-mono text-xs leading-relaxed text-ink-muted">
 {`fold 0  |=== train ===|·gap·|test|
 fold 1        |=== train ===|·gap·|test|
 fold 2              |=== train ===|·gap·|test|

@@ -10,6 +10,19 @@ export interface InstrumentSummary {
   tier: string;
   first_date: string | null;
   last_date: string | null;
+  has_data: boolean;
+}
+
+export interface SparklineSeries {
+  points: number[];
+  change_pct: number;
+  last: number;
+  n: number;
+}
+
+export interface SparklineResponse {
+  series: Record<string, SparklineSeries>;
+  days: number;
 }
 
 export interface Page<T> {

@@ -16,7 +16,7 @@ export function InfoTip({ children, label }: { children: ReactNode; label: strin
       <button
         type="button"
         aria-label={`What is ${label}?`}
-        className="ml-1 grid h-3.5 w-3.5 place-items-center rounded-full border border-line-strong text-[9px] leading-none text-ink-faint transition-colors hover:border-accent hover:text-accent"
+        className="ml-1 grid h-3.5 w-3.5 place-items-center rounded-full border border-line-strong text-[9px] leading-none text-ink-faint transition-colors hover:border-violet hover:text-violet"
         onClick={() => setOpen((v) => !v)}
         onMouseEnter={() => setOpen(true)}
         onMouseLeave={() => setOpen(false)}
@@ -53,7 +53,7 @@ export function Stat({
   className?: string;
 }) {
   return (
-    <div className={cn("card card-hover p-4", className)}>
+    <div className={cn("glass glass-hover p-4", className)}>
       <div className="flex items-center">
         <span className="label">{label}</span>
         {hint && <InfoTip label={label}>{hint}</InfoTip>}
@@ -87,7 +87,7 @@ export function Badge({
 }) {
   const tones = {
     neutral: "border-line-strong bg-canvas-overlay text-ink-muted",
-    accent: "border-accent/40 bg-accent/10 text-accent",
+    accent: "border-violet/40 bg-violet/10 text-violet",
     gain: "border-gain/40 bg-gain/10 text-gain",
     loss: "border-loss/40 bg-loss/10 text-loss",
     warn: "border-warn/40 bg-warn/10 text-warn",
@@ -138,7 +138,7 @@ export function Skeleton({ className }: { className?: string }) {
 
 export function StatSkeleton() {
   return (
-    <div className="card p-4">
+    <div className="glass p-4">
       <Skeleton className="h-2.5 w-16" />
       <Skeleton className="mt-3 h-6 w-24" />
     </div>
@@ -156,7 +156,7 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="card flex flex-col items-center justify-center gap-3 px-6 py-14 text-center">
+    <div className="glass flex flex-col items-center justify-center gap-3 px-6 py-14 text-center">
       <div className="grid h-10 w-10 place-items-center rounded-full border border-line-strong text-ink-faint">
         ∅
       </div>

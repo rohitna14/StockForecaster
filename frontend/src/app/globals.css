@@ -10,29 +10,29 @@
 
   html {
     color-scheme: dark;
+    scroll-behavior: smooth;
   }
 
   body {
     @apply bg-canvas text-ink antialiased;
+    background-image: theme("backgroundImage.mesh");
+    background-attachment: fixed;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 
-  /*
-   * Tabular numerals everywhere a number is displayed.
-   * Proportional digits make figures jitter as they update, which is the
-   * fastest way to make a financial UI look amateur.
-   */
+  /* Tabular numerals wherever a number is shown. Proportional digits make
+     figures jitter as they update, which instantly reads as amateur. */
   .tnum {
     font-variant-numeric: tabular-nums;
     font-feature-settings: "tnum";
   }
 
   ::selection {
-    @apply bg-accent/30 text-ink;
+    @apply bg-violet/40 text-ink;
   }
 
   *:focus-visible {
-    @apply outline-none ring-2 ring-accent ring-offset-2 ring-offset-canvas;
+    @apply outline-none ring-2 ring-violet ring-offset-2 ring-offset-canvas;
   }
 
   ::-webkit-scrollbar {
@@ -46,26 +46,103 @@
     @apply rounded-full bg-line-strong;
   }
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-ink-faint;
+    @apply bg-violet/60;
   }
 }
 
 @layer components {
-  .card {
-    @apply rounded-card border border-line bg-canvas-raised;
+  /* Glass surface — the workhorse container */
+  .glass {
+    @apply rounded-card border border-line bg-canvas-raised/70 backdrop-blur-xl;
   }
 
-  .card-hover {
-    @apply transition-colors duration-150 hover:border-line-strong;
+  .glass-hover {
+    @apply transition-all duration-300 ease-spring;
+  }
+  .glass-hover:hover {
+    @apply -translate-y-1 border-line-glow bg-canvas-overlay/80 shadow-lift;
+  }
+
+  /* Gradient text */
+  .grad-text {
+    @apply bg-grad-primary bg-clip-text text-transparent;
+  }
+  .grad-text-violet {
+    @apply bg-grad-violet bg-clip-text text-transparent;
+  }
+
+  /* Buttons */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-pill px-4 py-2
+           text-sm font-medium transition-all duration-200 ease-spring
+           active:scale-[0.97];
+  }
+  .btn-primary {
+    @apply btn bg-grad-violet text-white shadow-glow hover:shadow-glow-lg hover:brightness-110;
+  }
+  .btn-ghost {
+    @apply btn border border-line-strong text-ink-muted
+           hover:border-violet/60 hover:bg-violet/10 hover:text-ink;
+  }
+  .btn-chip {
+    @apply inline-flex items-center gap-1.5 rounded-pill border border-line-strong
+           bg-canvas-raised px-3 py-1.5 text-xs font-medium text-ink-muted
+           transition-all duration-200 ease-spring
+           hover:-translate-y-0.5 hover:border-violet/60 hover:text-ink;
+  }
+  .btn-chip-active {
+    @apply border-violet bg-violet/15 text-violet-bright shadow-glow;
   }
 
   .label {
-    @apply text-2xs font-medium uppercase tracking-wider text-ink-faint;
+    @apply text-2xs font-semibold uppercase tracking-[0.12em] text-ink-faint;
   }
 
   .skeleton {
-    @apply animate-shimmer rounded bg-line;
+    @apply animate-shimmer rounded-lg bg-line;
   }
+
+  /* Animated gradient border on hover */
+  .ring-grad {
+    position: relative;
+  }
+  .ring-grad::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(135deg, #7c5cff, #e056c1, #22d3ee);
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+  }
+  .ring-grad:hover::before {
+    opacity: 1;
+  }
+}
+
+@layer utilities {
+  .stagger > * {
+    animation: fadeUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .stagger > *:nth-child(1) { animation-delay: 0.03s; }
+  .stagger > *:nth-child(2) { animation-delay: 0.06s; }
+  .stagger > *:nth-child(3) { animation-delay: 0.09s; }
+  .stagger > *:nth-child(4) { animation-delay: 0.12s; }
+  .stagger > *:nth-child(5) { animation-delay: 0.15s; }
+  .stagger > *:nth-child(6) { animation-delay: 0.18s; }
+  .stagger > *:nth-child(7) { animation-delay: 0.21s; }
+  .stagger > *:nth-child(8) { animation-delay: 0.24s; }
+  .stagger > *:nth-child(9) { animation-delay: 0.27s; }
+  .stagger > *:nth-child(10) { animation-delay: 0.3s; }
+  .stagger > *:nth-child(11) { animation-delay: 0.33s; }
+  .stagger > *:nth-child(12) { animation-delay: 0.36s; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -75,5 +152,6 @@
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

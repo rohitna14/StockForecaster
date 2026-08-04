@@ -6,7 +6,7 @@ import datetime as dt
 from collections.abc import Sequence
 from typing import Any
 
-from sqlalchemy import func, or_, select, update
+from sqlalchemy import case, func, or_, select, update
 
 from forecaster.db.models import Instrument, Tier
 from forecaster.db.repositories.base import Repository
@@ -42,10 +42,23 @@ class InstrumentRepository(Repository):
         limit: int = 25,
         offset: int = 0,
     ) -> list[Instrument]:
-        """Typeahead search over symbol and name.
+        """Typeahead search over symbol and company name.
 
-        Exact symbol matches rank first, then prefix matches, then substring --
-        so typing "A" surfaces ``A`` before ``AGILENT`` before ``TESLA``.
+        Ranking is scored rather than sorted by a single key, because users type
+        company names far more often than tickers -- "apple", "micro", "goog".
+
+        Score tiers:
+            100  exact symbol            "AAPL"  -> AAPL
+             90  symbol starts with      "goog"  -> GOOG, GOOGL
+             80  name starts with        "apple" -> Apple Inc.
+             70  a name *word* starts with  "micro" -> Advanced Micro Devices
+             50  name contains
+             40  symbol contains
+
+        Within a tier, symbols that actually have price history come first
+        (a result you cannot open is worse than one you can), then market cap
+        descending -- which is what puts Apple above Maui Land & Pineapple and
+        Microsoft above Micron for "micro".
         """
         stmt = select(Instrument)
         if active_only:
@@ -56,20 +69,40 @@ class InstrumentRepository(Repository):
             stmt = stmt.where(Instrument.tier == tier)
 
         if query:
-            q = query.strip().upper()
-            like = f"%{q}%"
+            raw = query.strip()
+            upper = raw.upper()
+
             stmt = stmt.where(
-                or_(Instrument.symbol.ilike(like), Instrument.name.ilike(f"%{query.strip()}%"))
+                or_(
+                    Instrument.symbol.ilike(f"%{upper}%"),
+                    Instrument.name.ilike(f"%{raw}%"),
+                )
             )
+
+            relevance = case(
+                (Instrument.symbol == upper, 100),
+                (Instrument.symbol.ilike(f"{upper}%"), 90),
+                (Instrument.name.ilike(f"{raw}%"), 80),
+                # Word-boundary match: " micro" inside "Advanced Micro Devices".
+                (Instrument.name.ilike(f"% {raw}%"), 70),
+                (Instrument.name.ilike(f"%{raw}%"), 50),
+                else_=40,
+            )
+
             stmt = stmt.order_by(
-                (Instrument.symbol == q).desc(),
-                Instrument.symbol.ilike(f"{q}%").desc(),
+                relevance.desc(),
+                (Instrument.tier == Tier.HOT).desc(),
+                Instrument.market_cap.desc().nullslast(),
                 func.length(Instrument.symbol),
                 Instrument.symbol,
             )
         else:
-            # No query: show the most liquid names first.
-            stmt = stmt.order_by(Instrument.market_cap.desc().nullslast(), Instrument.symbol)
+            # No query: most liquid names first, with tradable ones on top.
+            stmt = stmt.order_by(
+                (Instrument.tier == Tier.HOT).desc(),
+                Instrument.market_cap.desc().nullslast(),
+                Instrument.symbol,
+            )
 
         stmt = stmt.limit(limit).offset(offset)
         return list((await self.session.execute(stmt)).scalars().all())
