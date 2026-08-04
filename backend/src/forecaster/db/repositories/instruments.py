@@ -140,6 +140,8 @@ class InstrumentRepository(Repository):
                 "ipo_year",
                 "is_active",
             ],
+            # A metadata source that lacks a column must enrich, not erase.
+            preserve_on_null=True,
         )
 
     async def set_tier(self, symbol: str, tier: Tier) -> None:

@@ -10,13 +10,23 @@ import {
   trendGlyph,
 } from "@/lib/format";
 import { PriceChart } from "@/components/charts/PriceChart";
+import {
+  AboutPanel,
+  AnalystPanel,
+  Fundamentals,
+  NewsPanel,
+  QuoteBadge,
+} from "@/components/CompanyPanels";
 import { SymbolTabs } from "@/components/SymbolTabs";
 import { StatRing } from "@/components/ui/StatRing";
 import { SearchBar } from "@/components/SearchBar";
 import type {
+  CompanyProfile,
   InstrumentSummary,
   InstrumentSummaryStats,
+  NewsItem,
   OHLCVResponse,
+  Quote,
   RiskResponse,
 } from "@/lib/types";
 
@@ -44,13 +54,24 @@ export default async function SymbolPage({
     return <ErrorState symbol={symbol} error={error} />;
   }
 
-  [risk, info] = await Promise.all([
+  // Enrichment is best-effort and parallel: a missing profile or empty news
+  // feed must degrade the page, not fail it.
+  let profile: CompanyProfile | null = null;
+  let news: NewsItem[] = [];
+  let quote: Quote | null = null;
+
+  [risk, info, profile, news, quote] = await Promise.all([
     api.getRisk(symbol).catch(() => null),
     api.getInstrument(symbol).catch(() => null),
+    api.getProfile(symbol).catch(() => null),
+    api.getNews(symbol, 6).then((r) => r.items).catch(() => []),
+    api.getQuote(symbol).catch(() => null),
   ]);
 
-  const accent = sectorColor(info?.sector);
-  const up = summary.change_1d >= 0;
+  const accent = sectorColor(profile?.sector ?? info?.sector);
+  const displayPrice = quote?.price ?? summary.last_close;
+  const displayChange = quote?.change_percent ?? summary.change_1d;
+  const up = displayChange >= 0;
   const rangePos =
     ((summary.last_close - summary.range_52w_low) /
       Math.max(summary.range_52w_high - summary.range_52w_low, 1e-9)) *
@@ -77,19 +98,21 @@ export default async function SymbolPage({
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="tnum font-mono text-3xl font-black tracking-tight">{symbol}</h1>
-                {info?.sector && (
+                {(profile?.sector ?? info?.sector) && (
                   <span
                     className="rounded-pill px-2.5 py-1 text-xs font-medium"
                     style={{ background: `${accent}22`, color: accent }}
                   >
-                    {info.sector}
+                    {profile?.sector ?? info?.sector}
                   </span>
                 )}
                 <span className="rounded-pill border border-gain/40 bg-gain/10 px-2.5 py-1 text-xs font-medium text-gain">
                   {summary.source_tier} tier
                 </span>
               </div>
-              {info?.name && <p className="mt-1 text-ink-muted">{info.name}</p>}
+              {(profile?.name ?? info?.name) && (
+                <p className="mt-1 text-ink-muted">{profile?.name ?? info?.name}</p>
+              )}
               <p className="mt-1 text-xs text-ink-faint">
                 {summary.n_bars.toLocaleString()} bars · {fmtDate(summary.first_date)} →{" "}
                 {fmtDate(summary.as_of)}
@@ -100,16 +123,21 @@ export default async function SymbolPage({
 
           <div className="text-right">
             <div className="tnum font-mono text-4xl font-black tracking-tight">
-              {fmtPrice(summary.last_close)}
+              {fmtPrice(displayPrice)}
             </div>
             <div
               className={`tnum mt-1 inline-flex items-center gap-1.5 rounded-pill px-3 py-1 font-mono text-sm font-bold ${
                 up ? "bg-gain/15 text-gain" : "bg-loss/15 text-loss"
               }`}
             >
-              {trendGlyph(summary.change_1d)} {fmtPercent(summary.change_1d)}
+              {trendGlyph(displayChange)} {fmtPercent(displayChange)}
               <span className="font-normal opacity-60">today</span>
             </div>
+            {quote && (
+              <div className="mt-1.5 flex justify-end">
+                <QuoteBadge quote={quote} />
+              </div>
+            )}
           </div>
         </div>
 
@@ -229,6 +257,32 @@ export default async function SymbolPage({
           </div>
         </section>
       )}
+
+      {/* ═══════ COMPANY ═══════ */}
+      {profile && (
+        <section className="space-y-4">
+          <div>
+            <span className="label">Company</span>
+            <h2 className="mt-0.5 text-lg font-bold">Fundamentals &amp; analyst view</h2>
+          </div>
+
+          <Fundamentals profile={profile} />
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <AnalystPanel profile={profile} currentPrice={displayPrice} />
+            <AboutPanel profile={profile} />
+          </div>
+        </section>
+      )}
+
+      {/* ═══════ NEWS ═══════ */}
+      <section>
+        <div className="mb-4">
+          <span className="label">Latest</span>
+          <h2 className="mt-0.5 text-lg font-bold">What&apos;s happening</h2>
+        </div>
+        <NewsPanel items={news} />
+      </section>
 
       {/* ═══════ CTA STRIP ═══════ */}
       <section className="grid gap-4 lg:grid-cols-2">

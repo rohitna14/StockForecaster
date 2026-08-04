@@ -1,25 +1,30 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { cn, fmtCompact, sectorColor } from "@/lib/format";
-import type { InstrumentSummary } from "@/lib/types";
+import type { SearchMatch } from "@/lib/types";
 
 const POPULAR = ["AAPL", "MSFT", "NVDA", "TSLA", "AMZN", "GOOGL", "META", "SPY"];
 
 /**
- * Always-visible search with a live dropdown.
+ * Smart company search.
  *
- * Previously this lived behind ⌘K, which meant most people never found it.
- * Search by company name works ("apple", "micro", "amazon") because the backend
- * ranks name matches by market cap and pushes symbols that actually have price
- * history to the top — so the first result is the one you meant.
+ * Backed by a fuzzy index rather than SQL LIKE, so it handles the four ways
+ * people actually search:
+ *
+ *   ticker    AAPL          nickname   google -> GOOGL, facebook -> META
+ *   name      Apple Inc     partial    mic -> Microsoft, tes -> Tesla
+ *   typo      aple, teslla, micrsoft, nvdia
+ *
+ * Pressing Enter without picking anything navigates to the top-ranked match,
+ * so you never need to know the exact ticker.
  */
 export function SearchBar({
   size = "md",
   autoFocus = false,
-  placeholder = "Search Apple, Tesla, NVDA…",
+  placeholder = "Search Apple, Tesla, google…",
 }: {
   size?: "md" | "lg";
   autoFocus?: boolean;
@@ -27,10 +32,11 @@ export function SearchBar({
 }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<InstrumentSummary[]>([]);
+  const [results, setResults] = useState<SearchMatch[]>([]);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [navigating, setNavigating] = useState(false);
   const [recent, setRecent] = useState<string[]>([]);
 
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -38,13 +44,12 @@ export function SearchBar({
 
   useEffect(() => {
     try {
-      setRecent(JSON.parse(localStorage.getItem("sf.recent") ?? "[]").slice(0, 5));
+      setRecent(JSON.parse(localStorage.getItem("sf.recent") ?? "[]").slice(0, 6));
     } catch {
       /* storage unavailable */
     }
   }, []);
 
-  // ⌘K / Ctrl+K still focuses it, for people who expect that.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
@@ -69,7 +74,7 @@ export function SearchBar({
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
 
-  // Debounced so typing "GOOGL" fires one request, not five.
+  // Debounced so typing "microsoft" fires one request, not nine.
   useEffect(() => {
     const term = query.trim();
     if (!term) {
@@ -81,9 +86,9 @@ export function SearchBar({
     setLoading(true);
     const timer = setTimeout(async () => {
       try {
-        const page = await api.searchInstruments(term, 8);
+        const response = await api.search(term, 8);
         if (!cancelled) {
-          setResults(page.items);
+          setResults(response.results);
           setActive(0);
         }
       } catch {
@@ -91,22 +96,17 @@ export function SearchBar({
       } finally {
         if (!cancelled) setLoading(false);
       }
-    }, 160);
+    }, 150);
     return () => {
       cancelled = true;
       clearTimeout(timer);
     };
   }, [query]);
 
-  const quickPicks = useMemo(
-    () => (recent.length ? recent : POPULAR.slice(0, 5)),
-    [recent],
-  );
-
   function go(symbol: string) {
     const upper = symbol.toUpperCase();
     try {
-      const next = [upper, ...recent.filter((s) => s !== upper)].slice(0, 5);
+      const next = [upper, ...recent.filter((s) => s !== upper)].slice(0, 6);
       localStorage.setItem("sf.recent", JSON.stringify(next));
       setRecent(next);
     } catch {
@@ -118,8 +118,33 @@ export function SearchBar({
     router.push(`/s/${upper}`);
   }
 
-  const showDropdown = open && (query.trim().length > 0 || quickPicks.length > 0);
+  /**
+   * Enter with nothing highlighted resolves server-side, so "google" lands on
+   * Alphabet even if the dropdown hasn't returned yet.
+   */
+  async function submit() {
+    const term = query.trim();
+    if (!term) return;
+
+    const highlighted = results[active];
+    if (highlighted) {
+      go(highlighted.symbol);
+      return;
+    }
+
+    setNavigating(true);
+    try {
+      const match = await api.resolve(term);
+      go(match.symbol);
+    } catch {
+      go(term); // let the symbol page's on-demand ingest have a go
+    } finally {
+      setNavigating(false);
+    }
+  }
+
   const big = size === "lg";
+  const showDropdown = open;
 
   return (
     <div ref={wrapRef} className="relative w-full">
@@ -127,12 +152,15 @@ export function SearchBar({
         className={cn(
           "group relative flex items-center gap-3 rounded-pill border bg-canvas-raised/80 backdrop-blur-xl transition-all duration-300 ease-spring",
           big ? "px-5 py-4" : "px-4 py-2.5",
-          open
-            ? "border-violet shadow-glow"
-            : "border-line-strong hover:border-violet/50",
+          open ? "border-violet shadow-glow" : "border-line-strong hover:border-violet/50",
         )}
       >
-        <SearchIcon className={cn("shrink-0 text-ink-faint transition-colors group-focus-within:text-violet", big ? "h-5 w-5" : "h-4 w-4")} />
+        <SearchIcon
+          className={cn(
+            "shrink-0 text-ink-faint transition-colors group-focus-within:text-violet",
+            big ? "h-5 w-5" : "h-4 w-4",
+          )}
+        />
         <input
           ref={inputRef}
           value={query}
@@ -140,33 +168,33 @@ export function SearchBar({
           onFocus={() => setOpen(true)}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => {
-            const list = query.trim() ? results : [];
             if (e.key === "ArrowDown") {
               e.preventDefault();
-              setActive((i) => Math.min(i + 1, Math.max(list.length - 1, 0)));
+              setActive((i) => Math.min(i + 1, Math.max(results.length - 1, 0)));
             } else if (e.key === "ArrowUp") {
               e.preventDefault();
               setActive((i) => Math.max(i - 1, 0));
             } else if (e.key === "Enter") {
               e.preventDefault();
-              const chosen = list[active];
-              if (chosen) go(chosen.symbol);
-              else if (query.trim()) go(query.trim());
+              void submit();
             }
           }}
           placeholder={placeholder}
-          aria-label="Search stocks by name or symbol"
+          aria-label="Search stocks by name, ticker or nickname"
           className={cn(
             "w-full bg-transparent outline-none placeholder:text-ink-faint",
             big ? "text-base" : "text-sm",
           )}
         />
-        {loading ? (
+        {loading || navigating ? (
           <div className="h-4 w-4 shrink-0 animate-spin-slow rounded-full border-2 border-line-strong border-t-violet" />
         ) : query ? (
           <button
             type="button"
-            onClick={() => { setQuery(""); inputRef.current?.focus(); }}
+            onClick={() => {
+              setQuery("");
+              inputRef.current?.focus();
+            }}
             aria-label="Clear search"
             className="shrink-0 rounded-full p-1 text-ink-faint transition-colors hover:bg-canvas-hover hover:text-ink"
           >
@@ -187,7 +215,7 @@ export function SearchBar({
                 <span className="label">{recent.length ? "Recently viewed" : "Popular"}</span>
               </div>
               <div className="flex flex-wrap gap-1.5 px-3 pb-3">
-                {quickPicks.map((symbol) => (
+                {(recent.length ? recent : POPULAR).map((symbol) => (
                   <button
                     key={symbol}
                     type="button"
@@ -198,6 +226,12 @@ export function SearchBar({
                   </button>
                 ))}
               </div>
+              <div className="border-t border-line px-4 py-2 text-[10px] leading-relaxed text-ink-faint">
+                Try a nickname (<span className="text-violet">google</span>,{" "}
+                <span className="text-violet">facebook</span>), a partial (
+                <span className="text-violet">mic</span>), or even a typo (
+                <span className="text-violet">teslla</span>).
+              </div>
             </>
           )}
 
@@ -207,13 +241,13 @@ export function SearchBar({
                 Nothing matched &ldquo;{query}&rdquo;
               </p>
               <p className="mt-1 text-xs text-ink-faint">
-                Try a company name like &ldquo;Apple&rdquo; or a ticker like &ldquo;AAPL&rdquo;
+                Press Enter anyway — we&apos;ll try to fetch it.
               </p>
             </div>
           )}
 
           {query.trim() && results.length > 0 && (
-            <ul className="max-h-[22rem] overflow-y-auto p-1.5" role="listbox">
+            <ul className="max-h-[24rem] overflow-y-auto p-1.5" role="listbox">
               {results.map((item, index) => (
                 <li key={item.symbol}>
                   <button
@@ -235,31 +269,34 @@ export function SearchBar({
                     </span>
 
                     <span className="min-w-0 flex-1">
-                      <span className="flex items-center gap-2">
-                        <span className="tnum font-mono text-sm font-semibold">{item.symbol}</span>
-                        {item.has_data ? (
-                          <span className="rounded-pill bg-gain/15 px-1.5 py-0.5 text-[10px] font-medium text-gain">
-                            live
-                          </span>
-                        ) : (
-                          <span className="rounded-pill bg-line px-1.5 py-0.5 text-[10px] text-ink-faint">
-                            no data
+                      {/* "Apple Inc. (AAPL)" — name leads, because that is what
+                          people searched for. */}
+                      <span className="block truncate text-sm font-medium">
+                        {item.name}{" "}
+                        <span className="tnum font-mono text-ink-muted">
+                          ({item.symbol})
+                        </span>
+                      </span>
+                      <span className="mt-0.5 flex items-center gap-1.5">
+                        {item.sector && (
+                          <span className="text-[10px] text-ink-faint">{item.sector}</span>
+                        )}
+                        {index === 0 && (
+                          <span className="rounded-pill bg-violet/20 px-1.5 py-0.5 text-[9px] font-medium text-violet-bright">
+                            ↵ best match
                           </span>
                         )}
+                        {!item.has_data && (
+                          <span className="text-[9px] text-ink-faint">will fetch on open</span>
+                        )}
                       </span>
-                      <span className="block truncate text-xs text-ink-muted">{item.name}</span>
                     </span>
 
-                    <span className="hidden shrink-0 text-right sm:block">
-                      {item.market_cap ? (
-                        <span className="tnum block font-mono text-xs text-ink-muted">
-                          ${fmtCompact(item.market_cap)}
-                        </span>
-                      ) : null}
-                      {item.sector && (
-                        <span className="block text-[10px] text-ink-faint">{item.sector}</span>
-                      )}
-                    </span>
+                    {item.market_cap ? (
+                      <span className="tnum hidden shrink-0 font-mono text-xs text-ink-muted sm:block">
+                        ${fmtCompact(item.market_cap)}
+                      </span>
+                    ) : null}
                   </button>
                 </li>
               ))}
@@ -267,8 +304,8 @@ export function SearchBar({
           )}
 
           <div className="flex items-center justify-between border-t border-line px-4 py-2 text-[10px] text-ink-faint">
-            <span>↑↓ navigate · ↵ open · esc close</span>
-            <span>{results.length > 0 ? `${results.length} results` : "type to search"}</span>
+            <span>↑↓ navigate · ↵ open best match · esc close</span>
+            {results.length > 0 && <span>{results.length} results</span>}
           </div>
         </div>
       )}

@@ -10,7 +10,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any, TypeVar
 
-from sqlalchemy import Table
+from sqlalchemy import Table, func
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -43,6 +43,7 @@ class Repository:
         conflict_cols: Sequence[str],
         update_cols: Sequence[str] | None = None,
         chunk_size: int = DEFAULT_CHUNK_SIZE,
+        preserve_on_null: bool = False,
     ) -> int:
         """Bulk INSERT ... ON CONFLICT DO UPDATE, portable across PG and SQLite.
 
@@ -55,6 +56,15 @@ class Repository:
             update_cols: columns to overwrite on conflict. ``None`` updates
                 every non-conflict column; an empty sequence makes it a
                 DO NOTHING (insert-if-absent).
+            preserve_on_null: when True, a NULL in the incoming row keeps the
+                existing value instead of erasing it.
+
+                This exists because of a real bug: seeding S&P 500 membership
+                from a CSV that has no ``market_cap`` column silently zeroed
+                market cap for the 503 largest companies -- the exact rows where
+                it matters most for search ranking. A partial metadata source
+                should enrich a record, never demolish the parts it does not
+                know about.
 
         Returns:
             Number of rows submitted (not necessarily the number changed).
@@ -73,9 +83,15 @@ class Repository:
             chunk = rows[start : start + chunk_size]
             stmt = insert_fn(tbl).values(list(chunk))
             if update_cols:
+                if preserve_on_null:
+                    assignments = {
+                        c: func.coalesce(getattr(stmt.excluded, c), tbl.c[c])
+                        for c in update_cols
+                    }
+                else:
+                    assignments = {c: getattr(stmt.excluded, c) for c in update_cols}
                 stmt = stmt.on_conflict_do_update(
-                    index_elements=list(conflict_cols),
-                    set_={c: getattr(stmt.excluded, c) for c in update_cols},
+                    index_elements=list(conflict_cols), set_=assignments
                 )
             else:
                 stmt = stmt.on_conflict_do_nothing(index_elements=list(conflict_cols))

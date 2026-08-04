@@ -181,3 +181,95 @@ export interface ProblemDetail {
   request_id?: string;
   details?: Record<string, unknown>;
 }
+
+
+// ── search ────────────────────────────────────────────────────────────────
+export interface SearchMatch {
+  symbol: string;
+  name: string;
+  sector: string | null;
+  market_cap: number | null;
+  has_data: boolean;
+  score: number;
+  match_reason: string;
+}
+
+export interface SearchResponse {
+  query: string;
+  results: SearchMatch[];
+  best: SearchMatch | null;
+  count: number;
+}
+
+// ── company enrichment ────────────────────────────────────────────────────
+export interface CompanyProfile {
+  symbol: string;
+  name: string;
+  exchange: string | null;
+  sector: string | null;
+  industry: string | null;
+  country: string | null;
+  website: string | null;
+  employees: number | null;
+  summary: string | null;
+  currency: string;
+  market_cap: number | null;
+  enterprise_value: number | null;
+  trailing_pe: number | null;
+  forward_pe: number | null;
+  peg_ratio: number | null;
+  price_to_book: number | null;
+  eps_trailing: number | null;
+  eps_forward: number | null;
+  profit_margin: number | null;
+  revenue: number | null;
+  revenue_growth: number | null;
+  beta: number | null;
+  dividend_yield: number | null;
+  dividend_rate: number | null;
+  payout_ratio: number | null;
+  fifty_two_week_high: number | null;
+  fifty_two_week_low: number | null;
+  fifty_day_average: number | null;
+  two_hundred_day_average: number | null;
+  average_volume: number | null;
+  shares_outstanding: number | null;
+  float_shares: number | null;
+  short_ratio: number | null;
+  target_mean_price: number | null;
+  target_high_price: number | null;
+  target_low_price: number | null;
+  recommendation: string | null;
+  analyst_count: number | null;
+  earnings_date: string | null;
+  ex_dividend_date: string | null;
+}
+
+export interface Quote {
+  symbol: string;
+  price: number | null;
+  previous_close: number | null;
+  change: number | null;
+  change_percent: number | null;
+  day_high: number | null;
+  day_low: number | null;
+  volume: number | null;
+  as_of: string | null;
+  is_delayed: boolean;
+  delay_note?: string;
+  source?: string;
+}
+
+export interface NewsItem {
+  title: string;
+  publisher: string | null;
+  url: string | null;
+  published_at: string | null;
+  summary: string | null;
+}
+
+export interface NewsResponse {
+  symbol: string;
+  count: number;
+  items: NewsItem[];
+}

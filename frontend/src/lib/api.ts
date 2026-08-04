@@ -18,7 +18,12 @@ import type {
   OHLCVResponse,
   Page,
   ProblemDetail,
+  CompanyProfile,
+  NewsResponse,
+  Quote,
   RiskResponse,
+  SearchMatch,
+  SearchResponse,
   SparklineResponse,
 } from "./types";
 
@@ -108,6 +113,23 @@ export const api = {
     }),
 
   getSectors: () => request<string[]>("/instruments/sectors"),
+
+  // ── smart search ───────────────────────────────────────────────────────
+  /** Ranked matches: tickers, names, nicknames, partials and typos. */
+  search: (q: string, limit = 8) =>
+    request<SearchResponse>("/search", { params: { q, limit } }),
+
+  /** Resolve free text to one symbol — what Enter navigates to. */
+  resolve: (q: string) => request<SearchMatch>("/resolve", { params: { q } }),
+
+  // ── company enrichment ─────────────────────────────────────────────────
+  getProfile: (symbol: string) =>
+    request<CompanyProfile>(`/instruments/${symbol}/profile`),
+
+  getQuote: (symbol: string) => request<Quote>(`/instruments/${symbol}/quote`),
+
+  getNews: (symbol: string, limit = 8) =>
+    request<NewsResponse>(`/instruments/${symbol}/news`, { params: { limit } }),
 
   getIndicators: (symbol: string, features: string, limit = 500) =>
     request<{

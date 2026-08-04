@@ -6,6 +6,7 @@ Registered onto the main Typer app in :mod:`forecaster.cli`.
 from __future__ import annotations
 
 import asyncio
+import datetime as dt
 import warnings
 from typing import Annotated, Any
 
@@ -41,6 +42,109 @@ DEFAULT_MODELS = ["ridge", "elastic_net", "random_forest", "gradient_boosting", 
 def register(app: typer.Typer) -> None:
     app.command("evaluate")(evaluate)
     app.command("backtest")(backtest)
+    app.command("ingest-all")(ingest_all)
+
+
+def ingest_all(
+    years: Annotated[int, typer.Option("--years", "-y")] = 5,
+    concurrency: Annotated[int, typer.Option("--concurrency", "-c")] = 3,
+    limit: Annotated[int | None, typer.Option("--limit", help="Cap symbols (testing).")] = None,
+    skip_existing: Annotated[bool, typer.Option("--skip-existing/--refresh")] = True,
+    hot: Annotated[bool, typer.Option("--hot", help="Also write to the Postgres hot tier.")] = False,
+    priority_only: Annotated[bool, typer.Option("--priority", help="Only well-known tickers.")] = False,
+) -> None:
+    """Ingest the entire catalog. Intended to run overnight.
+
+    Note this is NOT required for a symbol to work -- opening any ticker
+    ingests it on demand in about a second. This exists to warm the cache in
+    bulk so the first visitor never waits.
+
+    Realistic timing: ~6,600 symbols at concurrency 3 takes several hours, and
+    free providers will throttle. --priority does the ~500 names people
+    actually search first, which takes a few minutes and covers most traffic.
+    """
+    import asyncio as _asyncio
+
+    warnings.filterwarnings("ignore")
+
+    async def run() -> None:
+        from sqlalchemy import select
+
+        from forecaster.db.models import Instrument
+        from forecaster.db.session import create_all, dispose_engine, session_scope
+        from forecaster.ingestion.service import IngestionService
+        from forecaster.lake import query as lake_query
+        from forecaster.search.aliases import alias_targets
+
+        await create_all()
+
+        async with session_scope() as session:
+            stmt = select(Instrument.symbol, Instrument.market_cap).where(
+                Instrument.is_active.is_(True)
+            )
+            rows = (await session.execute(stmt)).all()
+
+        # Biggest companies first: if the run is interrupted, the symbols people
+        # actually search are already done.
+        ordered = sorted(rows, key=lambda r: -(r[1] or 0))
+        symbols = [r[0] for r in ordered]
+
+        if priority_only:
+            wanted = alias_targets()
+            symbols = [s for s in symbols if s in wanted] + symbols[:500]
+            symbols = list(dict.fromkeys(symbols))
+
+        if skip_existing:
+            before = len(symbols)
+            symbols = [s for s in symbols if not lake_query.has_symbol(s)]
+            console.print(f"[dim]{before - len(symbols)} already ingested, skipping[/]")
+
+        if limit:
+            symbols = symbols[:limit]
+
+        if not symbols:
+            console.print("[green]Nothing to ingest.[/]")
+            return
+
+        console.print(
+            f"Ingesting [bold]{len(symbols)}[/] symbols, {years}y, "
+            f"concurrency={concurrency}, hot={hot}"
+        )
+        console.print("[dim]Free providers throttle; this is deliberately unhurried.[/]")
+
+        service = IngestionService()
+        with console.status("[cyan]Starting...") as status:
+            done = 0
+
+            class _Progress:
+                def advance(self, n: int = 1) -> None:
+                    nonlocal done
+                    done += n
+                    pct = done / len(symbols) * 100
+                    status.update(f"[cyan]{done}/{len(symbols)} ({pct:.1f}%)")
+
+            summary = await service.ingest_many(
+                symbols,
+                start=dt.date.today() - dt.timedelta(days=365 * years),
+                end=dt.date.today(),
+                to_hot=True if hot else None,
+                concurrency=concurrency,
+                progress=_Progress(),
+            )
+        await service.aclose()
+        await dispose_engine()
+
+        table = Table(title="Bulk ingest", header_style="bold cyan")
+        table.add_column("Metric")
+        table.add_column("Value", justify="right")
+        for key, value in summary.as_dict().items():
+            table.add_row(key, f"{value:,}" if isinstance(value, int) else str(value))
+        console.print(table)
+
+        if summary.failures:
+            console.print(f"[yellow]{len(summary.failures)} failed[/] (likely throttling; re-run to resume)")
+
+    _asyncio.run(run())
 
 
 def evaluate(

@@ -16,6 +16,7 @@ from forecaster.db.repositories.ohlcv import OHLCVRepository
 from forecaster.db.repositories.runs import RunRepository
 from forecaster.db.session import get_session
 from forecaster.exceptions import InstrumentNotFoundError
+from forecaster.ingestion.on_demand import get_ingestor
 from forecaster.ingestion.router import ProviderRouter
 from forecaster.lake import query as lake_query
 from forecaster.logging import get_logger
@@ -37,6 +38,7 @@ async def close_provider_router() -> None:
     if _router is not None:
         await _router.aclose()
     _router = None
+    await get_ingestor().aclose()
 
 
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
@@ -80,11 +82,17 @@ async def load_bars(
     start: dt.date | None = None,
     end: dt.date | None = None,
     adjusted: bool = True,
+    allow_fetch: bool = True,
 ) -> tuple[pd.DataFrame, str]:
-    """Fetch bars from the hot tier, falling back to the cold lake.
+    """Fetch bars, ingesting the symbol on demand if we do not have it yet.
 
-    Returns ``(frame, tier)``. This is the single place the two-tier split is
-    resolved -- routers never need to know which store answered.
+    Returns ``(frame, tier)``. Every symbol endpoint funnels through here, so
+    this is the one place that resolves the hot/cold split *and* the one place
+    that decides to go and get data we are missing. A user should never be told
+    "not ingested" for a real listed company -- that is a detail of our storage,
+    not a fact about the market.
+
+    Resolution order: hot tier -> cold lake -> fetch from providers -> hot tier.
     """
     frame = await ohlcv.get_frame(symbol, start=start, end=end, adjusted=adjusted)
     if not frame.empty:
@@ -94,6 +102,19 @@ async def load_bars(
     if not frame.empty:
         return frame, "cold"
 
+    if allow_fetch:
+        outcome = await get_ingestor().ensure(symbol)
+        if outcome.succeeded:
+            frame = await ohlcv.get_frame(symbol, start=start, end=end, adjusted=adjusted)
+            if not frame.empty:
+                return frame, "fetched"
+            frame = lake_query.read_bars(symbol, start=start, end=end, adjusted=adjusted)
+            if not frame.empty:
+                return frame, "fetched"
+
     raise InstrumentNotFoundError(
-        f"No price history for {symbol.upper()}. Ingest it first.", symbol=symbol.upper()
+        f"No market history is available for {symbol.upper()} from any data "
+        f"provider. It may be delisted, an invalid symbol, or not covered by "
+        f"the free data sources this project uses.",
+        symbol=symbol.upper(),
     )

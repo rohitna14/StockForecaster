@@ -137,9 +137,12 @@ def create_app() -> FastAPI:
         instruments,
         models,
         runs,
+        search,
     )
 
-    for router in (health, instruments, models, runs, backtests):
+    # `search` is registered before `instruments` so /search and /resolve are
+    # matched before the /instruments/{symbol} catch-all.
+    for router in (health, search, instruments, models, runs, backtests):
         app.include_router(router.router, prefix=API_PREFIX)
 
     @app.get("/", include_in_schema=False)
