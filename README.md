@@ -206,3 +206,15 @@ Stated because a project that lists none is not credible.
 
 MIT. Research and educational use. **Not financial advice.** Past performance
 does not predict future results.
+
+---
+
+## The original prototype
+
+The first commit (`c9b677a`) is the 3-file version this replaced: 895 lines of
+Streamlit, a single 80/20 split, no baseline, and a "champion" model chosen by
+the best R² on the same test set it was scored on. It is preserved in git
+history rather than in the working tree — `git show c9b677a` if you want the
+before-and-after.
+
+The three bugs above all come from it.
