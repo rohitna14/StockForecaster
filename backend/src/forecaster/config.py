@@ -87,7 +87,20 @@ class Settings(BaseSettings):
     # ── API service ────────────────────────────────────────────────────────
     api_host: str = "127.0.0.1"
     api_port: int = 8000
-    api_cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
+
+    #: Browsers treat "localhost" and "127.0.0.1" as *different origins*, so an
+    #: allow-list containing only one of them silently blocks every client-side
+    #: fetch from the other -- surfacing in the UI as "cannot reach the API"
+    #: even though the server is running fine and curl works. Both spellings of
+    #: each local port are allowed so it does not matter which one gets typed.
+    api_cors_origins: list[str] = Field(
+        default_factory=lambda: [
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+            "http://localhost:8501",
+            "http://127.0.0.1:8501",
+        ]
+    )
     api_rate_limit: str = "120/minute"
 
     @field_validator("log_level")
