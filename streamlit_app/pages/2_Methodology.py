@@ -28,9 +28,9 @@ findings = methodology["known_findings"]
 left, right = st.columns(2)
 
 with left:
-    st.error(f"**Directional price prediction**\n\n{findings['directional_price_prediction']}", icon="✕")
+    st.error(f"**Directional price prediction**\n\n{findings['directional_price_prediction']}", icon="❌")
 with right:
-    st.success(f"**Volatility forecasting**\n\n{findings['volatility_forecasting']}", icon="✓")
+    st.success(f"**Volatility forecasting**\n\n{findings['volatility_forecasting']}", icon="✅")
 
 st.caption(
     "The negative result is given equal prominence deliberately. A project that "
@@ -98,7 +98,7 @@ st.info(
     "target through the leak and posts positive skill on pure noise. It is "
     "paired with a positive control on planted-signal data, so the suite cannot "
     "pass by the pipeline simply being broken.",
-    icon="ⓘ",
+    icon="ℹ️",
 )
 
 st.divider()

@@ -60,13 +60,13 @@ if best is None:
         "**No model beat the baseline.** Every model below performed worse than "
         "assuming no change. For directional price targets this is the expected "
         "result, and it is shown rather than hidden.",
-        icon="⚠",
+        icon="⚠️",
     )
 else:
     st.success(
         f"**{best['display_name'] or best['model']}** reduced forecast error by "
         f"**{best['rmse_skill_pct']:+.2f}%** versus the naive baseline.",
-        icon="✓",
+        icon="✅",
     )
 
 st.subheader("Leaderboard")

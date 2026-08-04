@@ -61,6 +61,43 @@ def test_streamlit_client_contains_no_domain_logic() -> None:
     )
 
 
+@pytest.mark.skipif(not STREAMLIT_APP.exists(), reason="streamlit app not present")
+def test_streamlit_icons_are_real_emoji() -> None:
+    """`icon=` must be an emoji, not a typographic symbol.
+
+    Streamlit validates the argument against the emoji package's set and raises
+    at *render* time, so characters like U+2713 CHECK MARK or U+26A0 WARNING
+    SIGN (without the variation selector) import fine, pass every other test,
+    and then crash the page a user is looking at. Catch it here instead.
+    """
+    streamlit_util = pytest.importorskip(
+        "streamlit.string_util", reason="requires streamlit"
+    )
+
+    offenders: list[str] = []
+    for path in STREAMLIT_APP.rglob("*.py"):
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            for keyword in node.keywords:
+                # set_page_config accepts non-emoji; only alert icons validate.
+                if keyword.arg != "icon" or not isinstance(keyword.value, ast.Constant):
+                    continue
+                value = keyword.value.value
+                if not isinstance(value, str):
+                    continue
+                try:
+                    streamlit_util.validate_icon_or_emoji(value)
+                except Exception:  # noqa: BLE001 -- any rejection is a failure
+                    offenders.append(
+                        f"{path.relative_to(REPO_ROOT)}:{keyword.value.lineno} "
+                        f"icon={value!r} (U+{ord(value[0]):04X})"
+                    )
+
+    assert not offenders, f"Non-emoji icon= arguments will crash at render: {offenders}"
+
+
 # ═════════════════════ backend layering ════════════════════════════════════
 def test_domain_layer_does_not_import_the_api() -> None:
     """Features, models, validation and backtest must not depend on FastAPI.

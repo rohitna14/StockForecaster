@@ -56,9 +56,9 @@ def render_header() -> str:
         st.divider()
         st.caption(f"API: `{api.API_URL}`")
         if api.health():
-            st.success("API connected", icon="✓")
+            st.success("API connected", icon="✅")
         else:
-            st.error("API unreachable", icon="✕")
+            st.error("API unreachable", icon="❌")
             st.caption(
                 "Start it with:\n\n"
                 "`uvicorn forecaster.api.main:app --reload`\n\n"
@@ -167,7 +167,7 @@ def main() -> None:
         "testing, no model beat a naive baseline at predicting *direction* for "
         "any symbol or horizon. The measurable edge is in forecasting "
         "*volatility*. See the Forecast and Methodology pages.",
-        icon="ⓘ",
+        icon="ℹ️",
     )
 
 
