@@ -150,7 +150,16 @@ def compatible_models(names: list[str], *, classification: bool) -> list[str]:
     kept: list[str] = []
     for name in names:
         if name not in _REGISTRY:
-            kept.append(name)  # lazy/deep models resolve later
+            # Resolve lazily-registered models (the TensorFlow family) before
+            # filtering. Waving them through unresolved put every sequence model
+            # into classification runs, where they are regressors and would
+            # either fail or emit continuous values scored as class labels.
+            try:
+                model_cls = get_model_class(name)
+            except UnknownModelError:
+                continue
+            if model_cls.is_classifier == classification:
+                kept.append(name)
             continue
         if _REGISTRY[name].is_classifier == classification:
             kept.append(name)

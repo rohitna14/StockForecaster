@@ -46,7 +46,7 @@ export default async function HomePage() {
         <div className="relative mx-auto max-w-3xl text-center">
           <span className="inline-flex animate-fade-in items-center gap-2 rounded-pill border border-violet/40 bg-violet/10 px-4 py-1.5 text-xs font-medium text-violet-bright">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-violet" />
-            Walk-forward validated · 145 tests · null results published
+            Walk-forward validated · 200 tests · null results published
           </span>
 
           <h1 className="mt-6 animate-fade-up text-4xl font-black leading-[1.05] tracking-tight sm:text-6xl">

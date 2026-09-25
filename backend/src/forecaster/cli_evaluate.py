@@ -181,9 +181,17 @@ def evaluate(
     from forecaster.validation.harness import EvaluationConfig, EvaluationHarness
 
     symbol_list = [s.upper() for s in (symbols or DEFAULT_SYMBOLS)]
-    model_list = [m.strip() for m in models.split(",") if m.strip()]
+    if models.strip().lower() == "all":
+        # Every registered model. Classifiers are filtered per-target by the
+        # harness, so this is safe to pass for regression targets too.
+        from forecaster.models.registry import available_models
+
+        model_list = available_models()
+        deep = True
+    else:
+        model_list = [m.strip() for m in models.split(",") if m.strip()]
     if deep:
-        model_list += ["lstm", "gru", "tcn", "transformer"]
+        model_list = list(dict.fromkeys([*model_list, "lstm", "gru", "tcn", "transformer"]))
     horizon_list = [int(h) for h in horizons.split(",") if h.strip()]
 
     targets = [TargetType.RETURN, TargetType.VOL_RATIO] if write_results else [TargetType(target)]
